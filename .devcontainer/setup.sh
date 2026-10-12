@@ -22,7 +22,7 @@ if [ -n "${LITELLM_API_KEY:-}" ]; then
 fi
 
 log "Claude Code talks to the course gateway with the course key, from every shell"
-PROFILE_LINE='[ -z "${LITELLM_API_KEY:-}" ] && [ -r "$HOME/.config/cse490/key" ] && export LITELLM_API_KEY="$(cat "$HOME/.config/cse490/key")"; export ANTHROPIC_BASE_URL="${LITELLM_BASE_URL:-https://litellm-test.cs.washington.edu}" ANTHROPIC_AUTH_TOKEN="$LITELLM_API_KEY" ANTHROPIC_MODEL="${ANTHROPIC_MODEL:-claude-sonnet-5}"'
+PROFILE_LINE='[ -z "${LITELLM_API_KEY:-}" ] && [ -r "$HOME/.config/cse490/key" ] && export LITELLM_API_KEY="$(cat "$HOME/.config/cse490/key")"; export ANTHROPIC_BASE_URL="${LITELLM_BASE_URL:-https://llmproxy.cs.washington.edu}" ANTHROPIC_AUTH_TOKEN="$LITELLM_API_KEY" ANTHROPIC_MODEL="${ANTHROPIC_MODEL:-external/sonnet-5}" ANTHROPIC_SMALL_FAST_MODEL="${ANTHROPIC_SMALL_FAST_MODEL:-external/haiku-4-5-20251001}" CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS=1'
 for rc in "$HOME/.bashrc" "$HOME/.zshrc" "$HOME/.profile"; do
   grep -q 'ANTHROPIC_AUTH_TOKEN' "$rc" 2>/dev/null || echo "$PROFILE_LINE" >> "$rc"
 done

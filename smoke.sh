@@ -30,7 +30,7 @@ fi
 
 if [ -n "${LITELLM_API_KEY:-}" ]; then pass "course key present as a secret"; else fail "LITELLM_API_KEY secret (GitHub Settings, Codespaces, Secrets; then restart the codespace)"; fi
 
-code=$(curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer ${LITELLM_API_KEY:-none}" "${LITELLM_BASE_URL:-https://litellm-test.cs.washington.edu}/v1/models")
+code=$(curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer ${LITELLM_API_KEY:-none}" "${LITELLM_BASE_URL:-https://llmproxy.cs.washington.edu}/v1/models")
 [ "$code" = "200" ] && pass "gateway answers to your key" || fail "gateway (HTTP $code)"
 
 [ -n "${HARNESS_MODEL:-}" ] && pass "harness model $HARNESS_MODEL" || fail "HARNESS_MODEL (set by the codespace)"

@@ -56,12 +56,15 @@ week three. New event kinds:
 
 ## Settings that save you time
 
-- The harness's model this week is `openrouter/deepseek-v4-flash-0731` through the
-  course gateway, in place of week three's. Read it from the `HARNESS_MODEL`
-  environment variable, which the codespace sets, with that name as the fallback. The
-  harness re-sends the whole conversation every turn, and this model costs about a
-  hundredth of the others per turn; it places a torus as well as any of them. Claude
-  Code keeps its own model.
+- The harness's model this week is `internal/Qwen3.6-35B-A3B` through the course
+  gateway, in place of week three's. Read it from the `HARNESS_MODEL` environment
+  variable, which the codespace sets, with that name as the fallback. It is the course's
+  own hosted model: the harness re-sends the whole conversation every turn, and this one
+  draws on no budget; it places a torus as well as any of them. Any other name from the
+  gateway's list works too: ask `GET /v1/models` with your key, and set `HARNESS_MODEL`
+  to the name exactly as listed, prefix included. Qwen returns a `reasoning_content`
+  field beside each reply; ignore it. Claude Code keeps its own model, and `/model` with
+  any listed name switches it.
 - Ask the gateway for up to 8192 output tokens per reply. The default cuts a
   long Blender script in half.
 - Retry a call once on an HTTP 502; the gateway drops single replies that run

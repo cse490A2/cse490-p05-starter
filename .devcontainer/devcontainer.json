@@ -21,15 +21,17 @@
     }
   },
   "containerEnv": {
-    "LITELLM_BASE_URL": "https://litellm-test.cs.washington.edu",
-    "ANTHROPIC_BASE_URL": "https://litellm-test.cs.washington.edu",
-    "ANTHROPIC_MODEL": "claude-sonnet-5",
+    "LITELLM_BASE_URL": "https://llmproxy.cs.washington.edu",
+    "ANTHROPIC_BASE_URL": "https://llmproxy.cs.washington.edu",
+    "ANTHROPIC_MODEL": "external/sonnet-5",
+    "ANTHROPIC_SMALL_FAST_MODEL": "external/haiku-4-5-20251001",
+    "CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS": "1",
     "BLENDER_MCP_SAFE_MODE": "1",
     "BLENDER_MCP_DISABLE_TELEMETRY": "true",
     "DISPLAY": ":1",
     "LIBGL_ALWAYS_SOFTWARE": "1",
     "GALLIUM_DRIVER": "llvmpipe",
-    "HARNESS_MODEL": "openrouter/deepseek-v4-flash-0731"
+    "HARNESS_MODEL": "internal/Qwen3.6-35B-A3B"
   },
   "remoteEnv": {
     "ANTHROPIC_AUTH_TOKEN": "${containerEnv:LITELLM_API_KEY}",
@@ -51,11 +53,19 @@
         "claudeCode.environmentVariables": [
           {
             "name": "ANTHROPIC_BASE_URL",
-            "value": "https://litellm-test.cs.washington.edu"
+            "value": "https://llmproxy.cs.washington.edu"
           },
           {
             "name": "ANTHROPIC_MODEL",
-            "value": "claude-sonnet-5"
+            "value": "external/sonnet-5"
+          },
+          {
+            "name": "ANTHROPIC_SMALL_FAST_MODEL",
+            "value": "external/haiku-4-5-20251001"
+          },
+          {
+            "name": "CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS",
+            "value": "1"
           }
         ],
         "chat.disableAIFeatures": true,
