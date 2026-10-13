@@ -3,7 +3,7 @@
 **Due: Tuesday 11:59 pm**
 Prerequisites: run the [course setup wizard](https://drive.google.com/drive/folders/1cSlgyCejHVopVe6CdZWdKyq1rPfPujXd) before class.
 
-The pelican riding a bicycle is [Simon Willison's test](https://simonwillison.net/2024/Oct/25/pelicans-on-a-bicycle/) of what a model can draw from one sentence. You will keep building your Project 4 agent: it gains Blender's tools over MCP and a gate that refuses what it must, then builds a scene you invent, anything but that pelican. The agent reaches Blender over a wire that delivers a server's tools, a protocol called MCP. You will write the rules for what the agent may do, and it all happens inside a sandbox that is not your laptop (in this case, GitHub Codespace).
+You will keep building your Project 4 agent: it gains Blender's tools over MCP and a gate that refuses what it must, then builds a scene you invent. The agent reaches Blender over a wire that delivers a server's tools, a protocol called MCP. You will write the rules for what the agent may do, and it all happens inside a sandbox that is not your laptop (in this case, GitHub Codespace).
 
 ## Instructions
 
