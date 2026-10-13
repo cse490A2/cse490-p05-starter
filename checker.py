@@ -26,9 +26,9 @@ import zipfile
 ROOT = os.path.abspath(os.path.dirname(__file__))
 os.chdir(ROOT)
 
-SCENE = "ride/ride.blend"
-RENDER = "ride/ride.mp4"
-FRAMES = "ride/frames"
+SCENE = "scene/scene.blend"
+RENDER = "scene/scene.mp4"
+FRAMES = "scene/frames"
 BUNDLE_DIR = "submission"
 BUNDLE = os.path.join(BUNDLE_DIR, "p05-bundle.zip")
 ASSETS = "cse490-p05-assets"

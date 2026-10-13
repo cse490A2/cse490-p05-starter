@@ -10,7 +10,7 @@ ARG BLENDER_MCP_VERSION=1.9.1
 # Runtime libraries the Linux tarball expects from the OS, plus Mesa's software rasterizer
 # (llvmpipe, in libgl1-mesa-dri) so the GUI runs on a machine with no GPU; Python 3.12 from
 # Ubuntu (the dev-container Python feature compiles one from source, three minutes a
-# codespace); ffmpeg for the checker and the ride video.
+# codespace); ffmpeg for the checker and the scene video.
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
       libgl1 libglx-mesa0 libgl1-mesa-dri libegl1 libgles2 libglu1-mesa mesa-utils \
       libx11-6 libxi6 libxxf86vm1 libxfixes3 libxrender1 libxkbcommon0 libxrandr2 libxcursor1 libxinerama1 \

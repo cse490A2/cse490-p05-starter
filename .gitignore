@@ -2,4 +2,4 @@
 __pycache__/
 *.pyc
 submission/
-ride/*.blend1
+scene/*.blend1

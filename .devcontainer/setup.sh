@@ -36,6 +36,6 @@ for d in /usr/local/novnc/noVNC-*; do
 done
 
 log "folders the build writes into"
-mkdir -p ride ride/frames submission
+mkdir -p scene scene/frames submission
 
 log "done. Blender's window starts on every codespace start (start-blender.sh)."
