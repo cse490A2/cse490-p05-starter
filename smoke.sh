@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Eight checks that the codespace is ready for the build. Run: bash smoke.sh
+# Seven checks that the codespace is ready for the build. Run: bash smoke.sh
 export PATH="$HOME/.local/bin:$PATH"
 # an SSH session does not receive Codespaces secrets; the setup step kept a private copy
 [ -z "${LITELLM_API_KEY:-}" ] && [ -r "$HOME/.config/cse490/key" ] && export LITELLM_API_KEY="$(cat "$HOME/.config/cse490/key")"
@@ -35,7 +35,7 @@ code=$(curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer ${LITELL
 
 [ -n "${HARNESS_MODEL:-}" ] && pass "harness model $HARNESS_MODEL" || fail "HARNESS_MODEL (set by the codespace)"
 
-command -v claude >/dev/null 2>&1 && pass "claude code $(claude --version 2>/dev/null | head -1)" || fail "claude code (npm install -g @anthropic-ai/claude-code)"
+ls "$HOME/.vscode-remote/extensions" "$HOME/.vscode-server/extensions" 2>/dev/null | grep -q "vivswan.litellm-vscode-chat" && pass "LiteLLM chat extension installed in the codespace" || fail "LiteLLM chat extension (Extensions panel: install LiteLLM Provider for GitHub Copilot Chat)"
 
 echo; echo "$ok ok, $bad missing"
 [ "$bad" -eq 0 ]

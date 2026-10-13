@@ -3,5 +3,3 @@ __pycache__/
 *.pyc
 submission/
 ride/*.blend1
-ride/progress/
-ride/progress.mp4

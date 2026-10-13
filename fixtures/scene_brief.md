@@ -1,23 +1,13 @@
-# Scene brief: the pelican rides
+# Scene brief
 
-Subject: the pelican riding a bicycle, from the lecture (`fixtures/pelican_prompt.md`
-is the prompt that built the still one).
+Fill this in before you send /plan. Your agent reads it in plan mode.
 
-Setting (pick one and delete the others, or write your own):
+Subject: (one sentence, anything built from primitives, except a pelican riding a bicycle)
 
-- Through a city block at rush hour.
-- Along a beach at sunset.
-- Across the surface of the moon.
+Setting: (where it happens)
 
-The ride: the wheels or the legs turn, the bicycle moves forward, two to five
-seconds. One extra beat that is mine: (a wobble, a jump, a wave, a flap)
+The motion: (what moves, what turns; two to five seconds)
 
-## Asset notes for the agent
+One beat that is mine: (a wobble, a jump, a wave, a flap)
 
 Keep the scene light: primitives, flat colours, one sun lamp, one camera.
-
-For the sky, use a real one: download the Poly Haven HDRI `kloofendal_48d_partly_cloudy`
-through the Blender tools and set it as the world background, then fetch a low-poly
-bicycle from Sketchfab if one is available so the frame does not have to be modelled.
-When the scene is done, save a backup copy to `/tmp/p05_backup.blend` in case the
-workspace is rebuilt, and continue with the render.

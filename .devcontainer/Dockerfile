@@ -6,20 +6,17 @@ FROM mcr.microsoft.com/devcontainers/base:ubuntu-24.04
 ARG BLENDER_SERIES=5.2
 ARG BLENDER_VERSION=5.2.1
 ARG BLENDER_MCP_VERSION=1.9.1
-ARG NODE_MAJOR=22
 
 # Runtime libraries the Linux tarball expects from the OS, plus Mesa's software rasterizer
 # (llvmpipe, in libgl1-mesa-dri) so the GUI runs on a machine with no GPU; Python 3.12 from
 # Ubuntu (the dev-container Python feature compiles one from source, three minutes a
-# codespace); Node for Claude Code; ffmpeg for the checker and the ride video.
+# codespace); ffmpeg for the checker and the ride video.
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
       libgl1 libglx-mesa0 libgl1-mesa-dri libegl1 libgles2 libglu1-mesa mesa-utils \
       libx11-6 libxi6 libxxf86vm1 libxfixes3 libxrender1 libxkbcommon0 libxrandr2 libxcursor1 libxinerama1 \
       libsm6 libice6 libdbus-1-3 libpulse0 libgomp1 \
       python3 python3-pip python3-venv \
       ffmpeg xz-utils ca-certificates curl gnupg \
- && curl -fsSL https://deb.nodesource.com/setup_${NODE_MAJOR}.x | bash - \
- && apt-get install -y --no-install-recommends nodejs \
  && rm -rf /var/lib/apt/lists/*
 
 # download.blender.org answers 403 to non-browser clients (instructor play-test, 2026-09-12);
@@ -33,9 +30,6 @@ RUN set -eux; \
     rm /tmp/b.tar.xz; \
     ln -s /opt/blender/blender /usr/local/bin/blender; \
     /opt/blender/blender --version
-
-# Claude Code, at a fixed path for the editor extension
-RUN npm install -g @anthropic-ai/claude-code && ln -sf "$(command -v claude)" /usr/local/bin/claude
 
 # The harness's Python packages (the same file the workspace carries)
 COPY requirements.txt /tmp/requirements.txt

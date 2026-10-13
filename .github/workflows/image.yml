@@ -1,5 +1,5 @@
-# Build the whole Project 5 container once - Blender, its server, the desktop, SSH, Claude
-# Code, the harness packages - and publish it to GitHub's registry. Student codespaces start
+# Build the whole Project 5 container once - Blender, its server, the desktop, SSH, the
+# harness packages - and publish it to GitHub's registry. Student codespaces start
 # from the published image, so none of it runs at create time (measured 2026-09-14: building
 # the recipe at create took 11 min; with only Blender pre-built, 9; the features and the
 # setup script were the rest).
@@ -36,4 +36,4 @@ jobs:
           imageName: ghcr.io/${{ github.repository_owner }}/cse490-p05-blender
           imageTag: latest
           push: always
-          runCmd: blender --version && claude --version && uvx --version && python3 -c "import mcp, openai; print('packages ok')"
+          runCmd: blender --version && uvx --version && python3 -c "import mcp, openai; print('packages ok')"

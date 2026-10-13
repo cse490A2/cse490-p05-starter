@@ -1,6 +1,7 @@
 {
-  "mcpServers": {
+  "servers": {
     "blender": {
+      "type": "stdio",
       "command": "/home/vscode/.local/bin/uvx",
       "args": ["blender-mcp==1.9.1"],
       "env": {

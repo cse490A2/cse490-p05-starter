@@ -1,8 +1,8 @@
 {
   "name": "cse490-workspace",
   "displayName": "CSE 490 workspace",
-  "description": "Arranges the Project 5 codespace on every open: the assignment on the left, Blender's window beside it, Claude Code on the right, the terminal below.",
-  "version": "0.4.0",
+  "description": "Arranges the Project 5 codespace on every open: the assignment on the left, Blender's window beside it, the chat on the right, the terminal below.",
+  "version": "0.5.0",
   "publisher": "cse490",
   "license": "MIT",
   "engines": {

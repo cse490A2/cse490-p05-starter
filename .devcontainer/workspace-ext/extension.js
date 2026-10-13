@@ -7,7 +7,7 @@
 //   2. open ASSIGNMENT.md on the left, focused, and Blender's window beside it:
 //      the codespace desktop on port 6080, shown in the editor's own browser tab
 //      (the wizard made that port public, so the tab needs no sign-in)
-//   3. open Claude Code in the right-hand sidebar
+//   3. open the chat in the right-hand sidebar
 //   4. focus a terminal below
 const vscode = require("vscode");
 
@@ -54,14 +54,14 @@ async function arrange(output) {
   output.appendLine(new Date().toISOString() + " arranging the workspace");
   await tryCommand("workbench.action.closeAllEditors");
 
-  // Claude Code on the right. The extension may still be starting; a second
-  // try after a pause covers it. Either command id is accepted by its versions.
-  let claude = await tryCommand("claude-vscode.sidebar.open");
-  if (!claude) {
+  // The chat on the right: VS Code's chat view, where the LiteLLM extension answers.
+  // The extension may still be starting; a second try after a pause covers it.
+  let chat = await tryCommand("workbench.action.chat.open");
+  if (!chat) {
     await sleep(3000);
-    claude = await tryCommand("claude-vscode.sidebar.open") || await tryCommand("claude-vscode.window.open");
+    chat = await tryCommand("workbench.action.chat.open");
   }
-  output.appendLine("claude code panel: " + (claude ? "opened" : "not available"));
+  output.appendLine("chat panel: " + (chat ? "opened" : "not available"));
 
   // The assignment on the left, focused: the answer to "where do I start".
   const folders = vscode.workspace.workspaceFolders || [];

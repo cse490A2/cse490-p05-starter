@@ -1,24 +1,4 @@
 {
-  "claudeCode.preferredLocation": "sidebar",
-  "claudeCode.disableLoginPrompt": true,
-  "claudeCode.hideOnboarding": true,
-  "claudeCode.initialPermissionMode": "default",
-  "claudeCode.environmentVariables": [
-    {
-      "name": "ANTHROPIC_BASE_URL",
-      "value": "https://llmproxy.cs.washington.edu"
-    },
-    {
-      "name": "ANTHROPIC_MODEL",
-      "value": "external/sonnet-5"
-    },
-    {
-      "name": "ANTHROPIC_SMALL_FAST_MODEL",
-      "value": "external/haiku-4-5-20251001"
-    },
-    {
-      "name": "CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS",
-      "value": "1"
-    }
-  ]
+  "workbench.startupEditor": "none",
+  "extensions.ignoreRecommendations": true
 }
