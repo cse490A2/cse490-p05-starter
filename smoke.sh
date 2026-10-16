@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Seven checks that the codespace is ready for the build. Run: bash smoke.sh
+# Nine checks that the codespace is ready for the build. Run: bash smoke.sh
 export PATH="$HOME/.local/bin:$PATH"
 # an SSH session does not receive Codespaces secrets; the setup step kept a private copy
 [ -z "${LITELLM_API_KEY:-}" ] && [ -r "$HOME/.config/cse490/key" ] && export LITELLM_API_KEY="$(cat "$HOME/.config/cse490/key")"
@@ -36,6 +36,9 @@ code=$(curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer ${LITELL
 [ -n "${HARNESS_MODEL:-}" ] && pass "harness model $HARNESS_MODEL" || fail "HARNESS_MODEL (set by the codespace)"
 
 ls "$HOME/.vscode-remote/extensions" "$HOME/.vscode-server/extensions" 2>/dev/null | grep -q "vivswan.litellm-vscode-chat" && pass "LiteLLM chat extension installed in the codespace" || fail "LiteLLM chat extension (Extensions panel: install LiteLLM Provider for GitHub Copilot Chat)"
+
+command -v codex >/dev/null 2>&1 && pass "codex $(codex --version 2>/dev/null | head -1 | awk '{print $NF}')" || fail "codex (the image installs it; rebuild the codespace)"
+grep -q 'wire_api = "responses"' "$HOME/.codex/config.toml" 2>/dev/null && grep -q 'mcp_servers.blender' "$HOME/.codex/config.toml" && pass "codex points at the course gateway and the Blender server" || fail "codex config (rerun: bash .devcontainer/setup.sh)"
 
 echo; echo "$ok ok, $bad missing"
 [ "$bad" -eq 0 ]

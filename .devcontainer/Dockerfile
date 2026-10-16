@@ -43,4 +43,10 @@ RUN curl -LsSf https://astral.sh/uv/install.sh | sh \
  && timeout 180 uvx "blender-mcp==${BLENDER_MCP_VERSION}" --help >/dev/null 2>&1 || true
 RUN mkdir -p "/home/vscode/.config/blender/${BLENDER_SERIES}/scripts/addons" \
  && uvx "blender-mcp==${BLENDER_MCP_VERSION}" install-addon || true
+# The OpenAI Codex CLI, the agent that builds the animation (owner direction 2026-10-15). The
+# standalone installer puts the binary in ~/.local/bin and its releases under ~/.codex; no Node.
+# setup.sh writes its config at create time: the course gateway over the Responses API, the key
+# by name, and the Blender server.
+RUN curl -fsSL https://chatgpt.com/codex/install.sh | CODEX_NON_INTERACTIVE=1 sh \
+ && codex --version
 USER root

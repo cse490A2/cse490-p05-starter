@@ -1,7 +1,7 @@
 # Project 5 starter: the codespace
 
 Everything for the build lives in this codespace: Blender, its server, the LiteLLM chat in VS
-Code, and a place for your agent. Your laptop runs nothing else.
+Code, the OpenAI Codex CLI, and a place for your agent. Your laptop runs nothing else.
 
 ## What is here
 
@@ -21,6 +21,13 @@ Clone your Project 4 harness repo into this workspace, in its own folder, and co
 here into it. Your agent runs from that folder; its trace.jsonl, PLAN.md and transcript.md land
 there, and checker.py finds them. The codespace already holds your course key and the gateway
 address in the environment, so the harness runs without a .env file.
+
+## Codex
+
+The torus and the gate are your harness's work. The animation is Codex's: `codex` in the
+terminal starts it. Setup pointed it at the course gateway with your key, by name, and at the
+same Blender server your harness uses; `/mcp` inside Codex lists that server. Stop your
+harness (Ctrl+C) before you start Codex: Blender takes one connection at a time.
 
 ## Every open arranges the screen
 

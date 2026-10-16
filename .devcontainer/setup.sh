@@ -35,6 +35,29 @@ for d in /usr/local/novnc/noVNC-*; do
     | sudo tee "$d/index.html" >/dev/null && echo "auto-connect page in $d"
 done
 
+log "Codex finds the course gateway, your key by name, and the Blender server in its own config"
+# The OpenAI Codex CLI speaks the Responses API, which the gateway serves at /v1/responses
+# (measured 2026-10-15). The key is named, never written: Codex reads LITELLM_API_KEY at run time.
+mkdir -p "$HOME/.codex"
+cat > "$HOME/.codex/config.toml" <<EOF
+model = "${HARNESS_MODEL:-external/haiku-5-5}"
+model_provider = "uw"
+approval_policy = "on-request"
+sandbox_mode = "workspace-write"
+
+[model_providers.uw]
+name = "UW course gateway"
+base_url = "${LITELLM_BASE_URL:-https://llmproxy.cs.washington.edu}/v1"
+env_key = "LITELLM_API_KEY"
+wire_api = "responses"
+
+[mcp_servers.blender]
+command = "/home/vscode/.local/bin/uvx"
+args = ["blender-mcp==1.9.1"]
+env = { BLENDER_MCP_SAFE_MODE = "1", BLENDER_MCP_DISABLE_TELEMETRY = "true", BLENDER_HOST = "localhost", BLENDER_PORT = "9876" }
+EOF
+echo "codex config written to $HOME/.codex/config.toml"
+
 log "folders the build writes into"
 mkdir -p scene scene/frames submission
 
