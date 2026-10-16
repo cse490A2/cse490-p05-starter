@@ -3,7 +3,7 @@
 **Due: Tuesday 11:59 pm**
 Prerequisites: run the [course setup wizard](https://drive.google.com/drive/folders/1cSlgyCejHVopVe6CdZWdKyq1rPfPujXd) before class.
 
-In this project you will create an awesome animation and learn about MCPs and sandboxes in the process!  We’ve built enough pelicans riding bicycles though, so think about something you want to animate instead – no pelicans riding bicycles please :-).  We’ll feature some of the most exciting results in class!  You’ll build this on top of your Project 4 agent:  it gains Blender's tools over MCP and a gate that refuses what it must, then builds a scene you invent. You will write the rules for what the agent may do, and it all happens inside a sandbox hosted on GitHub Codespace.
+In this project you will create an awesome animation and learn about MCPs and sandboxes in the process!  We’ve built enough pelicans riding bicycles though, so think about something you want to animate instead – no pelicans riding bicycles please :-).  We’ll feature some of the most exciting results in class!  You’ll build this on top of your Project 4 agent:  it gains Blender's tools over MCP and a gate that refuses what it must. Then the OpenAI Codex CLI, pointed at the same Blender server, builds the animation you invent. You will write the rules for what the agent may do, and it all happens inside a sandbox hosted on GitHub Codespace.
 
 ## Instructions
 
@@ -15,10 +15,11 @@ In this project you will create an awesome animation and learn about MCPs and sa
 5. Add the gate. In step 4 the model did what the boat's file told it. Nothing stood between the model's choice and the call: your harness ran every tool call it was handed. A gate is one check in that path. Before each call runs, the harness looks at the call itself, the tool's name and what the script or file does, and either lets it through or refuses it and says why. The model reads the refusal as a tool result and moves on. RULES.md names the two kinds of call to refuse: a tool that reaches outside, and a script or command that reaches the internet or writes outside this workspace. Ask the LiteLLM chat for it with the following prompt:
    * "Read harness.py and RULES.md. Put the check in one function, gate, that takes the tool's name and its arguments and returns a reason to refuse or nothing. Call it in the loop right before the tool would run. When it returns a reason, do not run the tool: append the reason to the context as the tool's result, so the model reads it, print it, and log it to trace.jsonl. Refuse what RULES.md forbids: the download tools, any command that reaches the internet, and any script that saves, exports, or renders outside this workspace. Judge what the script does, not the tool's name. Change nothing else."
 6. Test it by repeating step 4. Ask for the toy boat again. This time the terminal prints the refusal, trace.jsonl logs it with the reason gate returned, and the model's next reply tells you it could not fetch the boat. Open trace.jsonl and find the line: it is the return value you just read in the code.
-7. Plan your animation. Send "/plan build <your scene>": anything you can describe in one sentence, built from primitives, except a pelican on a bicycle. Answer the plan's questions and type approve when PLAN.md would work. Then build it: your agent makes a still first. Watch the Blender window and steer until the still is right, then ask for the animation.
-8. Once you are satisfied, render it. Ask your harness with the following prompt:
+7. Stop your harness with Ctrl+C: Blender takes one connection at a time. Start the OpenAI Codex CLI: type codex in the terminal. Setup pointed it at the course gateway with your key and at the same Blender server your harness used. Type /mcp to see the server and its tools.
+8. Build your animation with Codex: anything you can describe in one sentence, built from primitives, except a pelican on a bicycle. Ask for a still first. Watch the Blender window and steer until the still is right, then ask for the animation. Codex asks before it runs a command; read each one before you say yes. The codespace is the sandbox: nothing Codex does reaches your laptop.
+9. Render it. Ask Codex with the following prompt:
    * "Render the animation with the Workbench engine, one PNG per frame, into scene/frames, then join the frames into scene/scene.mp4 with ffmpeg."
-9. Run checker.py to prepare your submission, then submit to Canvas.
+10. Run checker.py to prepare your submission, then submit to Canvas.
 
 ## Turnin
 

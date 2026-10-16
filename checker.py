@@ -9,9 +9,11 @@ it writes submission/p05-bundle.zip with everything the handout asks you to subm
 and a manifest of what it found. Download that one file and upload it to Canvas.
 
 Your agent is the harness repo you cloned into this workspace. The checker finds
-it by its harness.py and reads the files beside it: trace.jsonl, PLAN.md,
-transcript.md, systemprompt.md and skills/. The trace's line shape is yours; the
-checker reads each line as text and looks for what the handout names.
+it by its harness.py and reads the files beside it: trace.jsonl, transcript.md,
+systemprompt.md and skills/. The trace's line shape is yours; the checker reads
+each line as text and looks for what the handout names. The animation is Codex's
+work, and Codex keeps its own record: the newest session file under ~/.codex/sessions
+is copied into the bundle as codex_session.jsonl and read the same way.
 """
 import datetime
 import glob
@@ -32,6 +34,8 @@ FRAMES = "scene/frames"
 BUNDLE_DIR = "submission"
 BUNDLE = os.path.join(BUNDLE_DIR, "p05-bundle.zip")
 ASSETS = "cse490-p05-assets"
+CODEX_SESSIONS = os.path.expanduser("~/.codex/sessions")
+CODEX_COPY = "codex_session.jsonl"
 
 BLENDER_TOOLS = ("get_scene_info", "get_object_info", "get_viewport_screenshot", "execute_blender_code",
                  "set_texture", "download_polyhaven_asset", "download_sketchfab_model",
@@ -62,6 +66,19 @@ def find_agent():
         d = os.path.dirname(p) or "."
         return sum(os.path.exists(os.path.join(d, f)) for f in ("trace.jsonl", "systemprompt.md", "PLAN.md"))
     return os.path.dirname(max(cands, key=score)) or "."
+
+
+def codex_session():
+    """The newest Codex session file: Codex writes one JSONL per session under
+    ~/.codex/sessions/<year>/<month>/<day>/. Copied beside the scene so the bundle
+    carries it; the copy is what the checks read."""
+    found = glob.glob(os.path.join(CODEX_SESSIONS, "**", "*.jsonl"), recursive=True)
+    found = [f for f in found if "blender" in open(f, encoding="utf-8", errors="ignore").read().lower()]
+    if not found:
+        return None
+    newest = max(found, key=os.path.getmtime)
+    shutil.copyfile(newest, CODEX_COPY)
+    return CODEX_COPY
 
 
 def lines(path):
@@ -156,12 +173,16 @@ def main():
     net_refused = [l for l in trace if refused(l) and (mentions(l, NETWORK_WORDS) or any(t in l for t in DENY_TARGETS))]
     check("A download or internet reach was refused before it ran", net_refused, f"{len(net_refused)} refusal line(s)")
 
-    # --- the plan and the skill (step 7)
-    plan = lines(A("PLAN.md"))
-    check("PLAN.md holds the plan for your scene, written in plan mode", len(plan) >= 3,
-          f"{len(plan)} lines" if plan else "no PLAN.md beside harness.py")
-    check("The blender-scene skill is in your agent's skills/ folder",
-          os.path.exists(A("skills/blender-scene/SKILL.md")))
+    # --- Codex builds the animation (steps 7 to 9)
+    codex = codex_session()
+    codex_lines = lines(codex) if codex else []
+    codex_calls = [l for l in codex_lines if mentions(l, ("execute_blender_code", "get_scene_info",
+                                                          "get_viewport_screenshot", "get_object_info"))]
+    check("Codex's session shows it building the scene through the Blender server",
+          len(codex_calls) >= 3,
+          f"{len(codex_calls)} Blender call line(s) in {codex}" if codex else "no Codex session mentioning Blender under ~/.codex/sessions")
+    codex_render = [l for l in codex_lines if mentions(l, ("scene/frames", "scene.mp4", "workbench"))]
+    check("The render was asked of Codex", codex_render, f"{len(codex_render)} line(s)")
 
     # --- the scene
     probe, why = blend_probe()
@@ -190,8 +211,8 @@ def main():
           ("no frames in " + FRAMES if not nframes else "frames present, video not assembled"))
 
     # --- secrets
-    files = [SCENE, RENDER, A("harness.py"), A("systemprompt.md"), A("PLAN.md"), A("transcript.md"),
-             A("trace.jsonl"), "fixtures/scene_brief.md"] + glob.glob(A("skills/*/SKILL.md"))
+    files = [SCENE, RENDER, A("harness.py"), A("systemprompt.md"), A("transcript.md"),
+             A("trace.jsonl"), CODEX_COPY, "fixtures/scene_brief.md"] + glob.glob(A("skills/*/SKILL.md"))
     leak = [f for f in files if os.path.isfile(f) and not f.endswith((".blend", ".mp4"))
             and SECRET.search(open(f, encoding="utf-8", errors="ignore").read())]
     check("No key or password in anything you submit", not leak, ", ".join(leak))

@@ -18,8 +18,8 @@ Code, the OpenAI Codex CLI, and a place for your agent. Your laptop runs nothing
 ## Where your agent goes
 
 Clone your Project 4 harness repo into this workspace, in its own folder, and copy skills/ from
-here into it. Your agent runs from that folder; its trace.jsonl, PLAN.md and transcript.md land
-there, and checker.py finds them. The codespace already holds your course key and the gateway
+here into it. Your agent runs from that folder; its trace.jsonl and transcript.md land there,
+and checker.py finds them. The codespace already holds your course key and the gateway
 address in the environment, so the harness runs without a .env file.
 
 ## Codex
