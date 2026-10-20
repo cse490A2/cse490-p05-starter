@@ -25,10 +25,8 @@ Build an animation of your own and learn MCP and sandboxes along the way. We've 
 
 If you have your own AI subscription, use it with either Blender on GitHub or your own locally installed Blender software connected with MCP:
 
-* If you hold a Claude Code or Codex subscription, you can use it instead: sign in, then add the Blender server named in RULES.md to its MCP configuration. Claude Code asks before each tool call.
-* If you prefer to work on your laptop, you can install Blender there and point your CLI at it. The sandbox is gone then, so read every command the way the gate would.
-
-Rebuild or extend your animation with it, then run checker.py again: it bundles your CLI's session beside the new render.
+* Install Blender to your personal device.
+* Use your preferred CLI Agent to install Blender MCP. Create another scene and watch your agent build it in real time.
 
 ## Turnin
 
