@@ -3,7 +3,7 @@
 **Due: Tuesday 11:59 pm**
 Prerequisites: run the [course setup wizard](https://drive.google.com/drive/folders/1cSlgyCejHVopVe6CdZWdKyq1rPfPujXd) before class.
 
-In this project you will create an awesome animation and learn about MCPs and sandboxes in the process!  We’ve built enough pelicans riding bicycles though, so think about something you want to animate instead – no pelicans riding bicycles please :-).  We’ll feature some of the most exciting results in class!  You’ll build this on top of your Project 4 agent:  it gains Blender's tools over MCP and a gate that refuses what it must. Then the OpenAI Codex CLI on the UW Purple API, pointed at the same Blender server, builds the animation you invent. You will write the rules for what the agent may do, and it all happens inside a sandbox hosted on GitHub Codespace.
+Build an animation of your own and learn MCP and sandboxes along the way. We've built enough pelicans riding bicycles, so animate something else. We'll feature the most exciting results in class! Start from your Project 4 agent. It gains Blender's tools over MCP and a gate that refuses what it must. Then the OpenAI Codex CLI, on the UW Purple API and pointed at the same Blender server, builds the animation you invent. You write the rules for what the agent may do, and everything runs inside a sandbox: a GitHub codespace.
 
 ## Instructions
 
@@ -23,7 +23,7 @@ In this project you will create an awesome animation and learn about MCPs and sa
 
 ## Make it awesome (optional)
 
-Codex on the course key runs the model and the budget the course set. If you want more, two routes are open:
+If you have your own AI subscription, use it with either Blender on GitHub or your own locally installed Blender software connected with MCP:
 
 * If you hold a Claude Code or Codex subscription, you can use it instead: sign in, then add the Blender server named in RULES.md to its MCP configuration. Claude Code asks before each tool call.
 * If you prefer to work on your laptop, you can install Blender there and point your CLI at it. The sandbox is gone then, so read every command the way the gate would.
