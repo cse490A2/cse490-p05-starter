@@ -3,4 +3,4 @@ __pycache__/
 *.pyc
 submission/
 scene/*.blend1
-codex_session.jsonl
+cli_session.jsonl

@@ -11,9 +11,11 @@ and a manifest of what it found. Download that one file and upload it to Canvas.
 Your agent is the harness repo you cloned into this workspace. The checker finds
 it by its harness.py and reads the files beside it: trace.jsonl, transcript.md,
 systemprompt.md and skills/. The trace's line shape is yours; the checker reads
-each line as text and looks for what the handout names. The animation is Codex's
-work, and Codex keeps its own record: the newest session file under ~/.codex/sessions
-is copied into the bundle as codex_session.jsonl and read the same way.
+each line as text and looks for what the handout names. The animation is a coding
+CLI's work, and the CLI keeps its own record: Codex writes sessions under
+~/.codex/sessions, Claude Code under ~/.claude/projects. The newest session file that
+mentions Blender, from either, is copied into the bundle as cli_session.jsonl and read
+the same way.
 """
 import datetime
 import glob
@@ -34,8 +36,8 @@ FRAMES = "scene/frames"
 BUNDLE_DIR = "submission"
 BUNDLE = os.path.join(BUNDLE_DIR, "p05-bundle.zip")
 ASSETS = "cse490-p05-assets"
-CODEX_SESSIONS = os.path.expanduser("~/.codex/sessions")
-CODEX_COPY = "codex_session.jsonl"
+CLI_SESSIONS = (os.path.expanduser("~/.codex/sessions"), os.path.expanduser("~/.claude/projects"))
+CODEX_COPY = "cli_session.jsonl"
 
 BLENDER_TOOLS = ("get_scene_info", "get_object_info", "get_viewport_screenshot", "execute_blender_code",
                  "set_texture", "download_polyhaven_asset", "download_sketchfab_model",
@@ -69,10 +71,11 @@ def find_agent():
 
 
 def codex_session():
-    """The newest Codex session file: Codex writes one JSONL per session under
-    ~/.codex/sessions/<year>/<month>/<day>/. Copied beside the scene so the bundle
-    carries it; the copy is what the checks read."""
-    found = glob.glob(os.path.join(CODEX_SESSIONS, "**", "*.jsonl"), recursive=True)
+    """The newest coding-CLI session file that mentions Blender. Codex writes one JSONL per
+    session under ~/.codex/sessions/<year>/<month>/<day>/; Claude Code writes one under
+    ~/.claude/projects/<workspace>/. Copied beside the scene so the bundle carries it; the
+    copy is what the checks read."""
+    found = [f for root in CLI_SESSIONS for f in glob.glob(os.path.join(root, "**", "*.jsonl"), recursive=True)]
     found = [f for f in found if "blender" in open(f, encoding="utf-8", errors="ignore").read().lower()]
     if not found:
         return None
@@ -173,16 +176,16 @@ def main():
     net_refused = [l for l in trace if refused(l) and (mentions(l, NETWORK_WORDS) or any(t in l for t in DENY_TARGETS))]
     check("A download or internet reach was refused before it ran", net_refused, f"{len(net_refused)} refusal line(s)")
 
-    # --- Codex builds the animation (steps 7 to 9)
+    # --- Codex, or the student's own CLI, builds the animation (steps 7 to 9)
     codex = codex_session()
     codex_lines = lines(codex) if codex else []
     codex_calls = [l for l in codex_lines if mentions(l, ("execute_blender_code", "get_scene_info",
                                                           "get_viewport_screenshot", "get_object_info"))]
-    check("Codex's session shows it building the scene through the Blender server",
+    check("Your CLI's session shows it building the scene through the Blender server",
           len(codex_calls) >= 3,
-          f"{len(codex_calls)} Blender call line(s) in {codex}" if codex else "no Codex session mentioning Blender under ~/.codex/sessions")
+          f"{len(codex_calls)} Blender call line(s) in {codex}" if codex else "no Codex or Claude Code session mentioning Blender under ~/.codex/sessions or ~/.claude/projects")
     codex_render = [l for l in codex_lines if mentions(l, ("scene/frames", "scene.mp4", "workbench"))]
-    check("The render was asked of Codex", codex_render, f"{len(codex_render)} line(s)")
+    check("The render was asked of your CLI", codex_render, f"{len(codex_render)} line(s)")
 
     # --- the scene
     probe, why = blend_probe()

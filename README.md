@@ -22,12 +22,16 @@ here into it. Your agent runs from that folder; its trace.jsonl and transcript.m
 and checker.py finds them. The codespace already holds your course key and the gateway
 address in the environment, so the harness runs without a .env file.
 
-## Codex
+## Codex, then your own tools
 
-The torus and the gate are your harness's work. The animation is Codex's: `codex` in the
-terminal starts it. Setup pointed it at the course gateway with your key, by name, and at the
-same Blender server your harness uses; `/mcp` inside Codex lists that server. Stop your
-harness (Ctrl+C) before you start Codex: Blender takes one connection at a time.
+The torus and the gate are your harness's work. The animation is Codex's: `codex` in the terminal
+starts the OpenAI Codex CLI. Setup pointed it at the UW Purple API (endpoint, model and key
+pending; the course gateway until then) and at the same Blender server your harness uses, and
+`/mcp` inside Codex lists that server. Stop your harness (Ctrl+C) before you start Codex: Blender
+takes one connection at a time. The handout's optional section lets a student with a Claude Code
+or Codex subscription use it instead, with the Blender server named in RULES.md added to its MCP
+configuration. checker.py bundles the newest session file it finds, Codex's or Claude Code's, as
+the record of the build.
 
 ## Every open arranges the screen
 
