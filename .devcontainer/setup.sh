@@ -35,6 +35,17 @@ for d in /usr/local/novnc/noVNC-*; do
     | sudo tee "$d/index.html" >/dev/null && echo "auto-connect page in $d"
 done
 
+log "OpenCode is present"
+# The image installs OpenCode (Dockerfile). Until the registry image students pull is rebuilt
+# from this Dockerfile - devcontainer.json pulls ghcr.io/arian-shamaei/cse490-p05-blender, the
+# workflow publishes ghcr.io/cse490a2/cse490-p05-blender, which is private (2026-10-23) - an
+# older image may arrive without it; then the installer runs here, once, about ten seconds.
+export PATH="$HOME/.opencode/bin:$PATH"
+if ! command -v opencode >/dev/null 2>&1; then
+  curl -fsSL https://opencode.ai/install | bash >/tmp/opencode-install.log 2>&1 && echo "opencode installed at create time" || echo "opencode install FAILED: see /tmp/opencode-install.log"
+fi
+opencode --version 2>/dev/null | tail -1
+
 log "OpenCode finds its model, your key by name, and the Blender server in its own config"
 # Part 2 runs the OpenCode CLI. Its model is DeepSeek V4.1 Flash on the UW Purple API, an
 # OpenAI-compatible endpoint behind Azure API Management that reads the key from an api-key
