@@ -18,6 +18,9 @@
   "secrets": {
     "LITELLM_API_KEY": {
       "description": "Your course key from the course staff. It starts with sk-. Your harness and the chat both use it."
+    },
+    "PURPLE_API_KEY": {
+      "description": "Your UW Purple API key, for OpenCode in Part 2. Optional: without it OpenCode uses the course gateway."
     }
   },
   "containerEnv": {
@@ -27,10 +30,10 @@
     "DISPLAY": ":1",
     "LIBGL_ALWAYS_SOFTWARE": "1",
     "GALLIUM_DRIVER": "llvmpipe",
-    "HARNESS_MODEL": "external/haiku-5-5"
+    "HARNESS_MODEL": "external/sonnet-5"
   },
   "remoteEnv": {
-    "PATH": "/home/vscode/.local/bin:${containerEnv:PATH}"
+    "PATH": "/home/vscode/.local/bin:/home/vscode/.opencode/bin:${containerEnv:PATH}"
   },
   "postCreateCommand": "bash .devcontainer/setup.sh 2>&1 | tee ~/setup.log; bash .devcontainer/install-ext.sh",
   "postStartCommand": "bash .devcontainer/install-ext.sh; bash .devcontainer/start-blender.sh",

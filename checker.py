@@ -8,14 +8,16 @@ words. It is the student's copy of the grader's checks, not the grader. At the e
 it writes submission/p05-bundle.zip with everything the handout asks you to submit
 and a manifest of what it found. Download that one file and upload it to Canvas.
 
-Your agent is the harness repo you cloned into this workspace. The checker finds
-it by its harness.py and reads the files beside it: trace.jsonl, transcript.md,
-systemprompt.md and skills/. The trace's line shape is yours; the checker reads
-each line as text and looks for what the handout names. The animation is a coding
-CLI's work, and the CLI keeps its own record: Codex writes sessions under
-~/.codex/sessions, Claude Code under ~/.claude/projects. The newest session file that
-mentions Blender, from either, is copied into the bundle as cli_session.jsonl and read
-the same way.
+Part 1 is your harness's work. The checker finds your agent by its harness.py and
+reads the files beside it: trace.jsonl, transcript.md, systemprompt.md and skills/.
+The trace's line shape is yours; the checker reads each line as text and looks for
+what the handout names. The Part 1 render lands in part1/.
+
+Part 2 is OpenCode's work, and OpenCode keeps its own record: its sessions live in
+~/.local/share/opencode/opencode.db. The newest session that mentions Blender is
+exported with `opencode export <id>` into opencode_session.json beside this file,
+and the checks read that copy. The Part 2 render lands in part2/. A Part 3 render,
+if you made one, lands in part3/ and rides along in the bundle.
 """
 import datetime
 import glob
@@ -23,6 +25,7 @@ import json
 import os
 import re
 import shutil
+import sqlite3
 import subprocess
 import sys
 import zipfile
@@ -30,22 +33,18 @@ import zipfile
 ROOT = os.path.abspath(os.path.dirname(__file__))
 os.chdir(ROOT)
 
-SCENE = "scene/scene.blend"
-RENDER = "scene/scene.mp4"
-FRAMES = "scene/frames"
+PARTS = ("part1", "part2")                      # graded
+EXTRA = sorted(set(os.path.dirname(p) for p in glob.glob("part*/scene.mp4")) - set(PARTS))
 BUNDLE_DIR = "submission"
 BUNDLE = os.path.join(BUNDLE_DIR, "p05-bundle.zip")
-ASSETS = "cse490-p05-assets"
-CLI_SESSIONS = (os.path.expanduser("~/.codex/sessions"), os.path.expanduser("~/.claude/projects"))
-CODEX_COPY = "cli_session.jsonl"
+OPENCODE_DB = os.path.expanduser("~/.local/share/opencode/opencode.db")
+OPENCODE_COPY = "opencode_session.json"
+MIN_FRAMES = 24                                 # one second at 24 frames a second
 
 BLENDER_TOOLS = ("get_scene_info", "get_object_info", "get_viewport_screenshot", "execute_blender_code",
                  "set_texture", "download_polyhaven_asset", "download_sketchfab_model",
                  "generate_hyper3d_model_via_text", "import_generated_asset")
-DENY_TARGETS = ("download_polyhaven_asset", "download_sketchfab_model", "generate_hyper3d_model_via_text",
-                "generate_hyper3d_model_via_images", "generate_hunyuan3d_model", "import_generated_asset")
-NETWORK_WORDS = ("urllib", "requests", "http.client", "socket", "git clone", "curl", "wget", "polyhaven",
-                 "sketchfab", "hyper3d", "download", "internet", "online")
+BUILD_TOOLS = ("execute_blender_code", "get_scene_info", "get_viewport_screenshot", "get_object_info")
 SECRET = re.compile(r"\bsk-[A-Za-z0-9_\-]{12,}")
 
 results = []
@@ -66,22 +65,8 @@ def find_agent():
         return None
     def score(p):
         d = os.path.dirname(p) or "."
-        return sum(os.path.exists(os.path.join(d, f)) for f in ("trace.jsonl", "systemprompt.md", "PLAN.md"))
+        return sum(os.path.exists(os.path.join(d, f)) for f in ("trace.jsonl", "systemprompt.md", "transcript.md"))
     return os.path.dirname(max(cands, key=score)) or "."
-
-
-def codex_session():
-    """The newest coding-CLI session file that mentions Blender. Codex writes one JSONL per
-    session under ~/.codex/sessions/<year>/<month>/<day>/; Claude Code writes one under
-    ~/.claude/projects/<workspace>/. Copied beside the scene so the bundle carries it; the
-    copy is what the checks read."""
-    found = [f for root in CLI_SESSIONS for f in glob.glob(os.path.join(root, "**", "*.jsonl"), recursive=True)]
-    found = [f for f in found if "blender" in open(f, encoding="utf-8", errors="ignore").read().lower()]
-    if not found:
-        return None
-    newest = max(found, key=os.path.getmtime)
-    shutil.copyfile(newest, CODEX_COPY)
-    return CODEX_COPY
 
 
 def lines(path):
@@ -90,44 +75,96 @@ def lines(path):
     return [l.rstrip("\n") for l in open(path, encoding="utf-8", errors="replace") if l.strip()]
 
 
-def refused(line):
-    return "refus" in line.lower()
-
-
 def mentions(line, words):
     low = line.lower()
     return any(w in low for w in words)
 
 
-def blend_probe():
-    if not os.path.exists(SCENE):
-        return None, "no scene file at " + SCENE
-    blender = shutil.which("blender") or "/opt/blender/blender"
+# --- OpenCode's record
+
+def opencode_session():
+    """The newest OpenCode session whose parts mention Blender, exported as JSON into
+    OPENCODE_COPY. Returns (path or None, why)."""
+    if os.path.exists(OPENCODE_COPY) and not os.path.exists(OPENCODE_DB):
+        return OPENCODE_COPY, "kept the copy already here"
+    if not os.path.exists(OPENCODE_DB):
+        return None, "no OpenCode database at " + OPENCODE_DB
     try:
-        p = subprocess.run([blender, "-b", SCENE, "--python", "checker_blend.py"],
-                           capture_output=True, text=True, timeout=180)
-    except (OSError, subprocess.TimeoutExpired) as e:
-        return None, f"could not run Blender headless: {e}"
-    for line in p.stdout.splitlines():
-        if line.startswith("BLENDPROBE "):
-            return json.loads(line[len("BLENDPROBE "):]), ""
-    return None, "Blender ran but the probe printed nothing"
+        db = sqlite3.connect(f"file:{OPENCODE_DB}?mode=ro", uri=True)
+        rows = db.execute(
+            "select s.id, max(s.time_updated) from session s join message m on m.session_id = s.id "
+            "join part p on p.message_id = m.id where lower(p.data) like '%blender%' "
+            "group by s.id order by 2 desc limit 1").fetchall()
+        db.close()
+    except sqlite3.Error as e:
+        return None, f"could not read the OpenCode database: {e}"
+    if not rows or not rows[0][0]:
+        return None, "no OpenCode session mentions Blender"
+    sid = rows[0][0]
+    exe = shutil.which("opencode") or os.path.expanduser("~/.opencode/bin/opencode")
+    raw = OPENCODE_COPY + ".raw"
+    try:
+        # the export is written to a file, not a pipe: through a pipe the CLI exits before
+        # the last of a long session has been read (truncated at 64 KB, 2026-10-23)
+        with open(raw, "w", encoding="utf-8") as out:
+            subprocess.run([exe, "export", sid], stdout=out, stderr=subprocess.DEVNULL, timeout=300)
+        text = open(raw, encoding="utf-8", errors="replace").read()
+        data = json.loads(text[text.find("{"):])
+    except (OSError, subprocess.TimeoutExpired, ValueError) as e:
+        return None, f"opencode export {sid} failed: {e}"
+    finally:
+        if os.path.exists(raw):
+            os.remove(raw)
+    with open(OPENCODE_COPY, "w", encoding="utf-8") as f:
+        json.dump(trim(data), f, indent=1)
+    return OPENCODE_COPY, sid
 
 
-def assemble_video():
+def trim(obj, limit=20000):
+    """The export carries every tool output in full, screenshots included, tens of
+    megabytes for one build. The record keeps every message and part; a string longer
+    than the limit is cut and marked, so the grader still reads every call and script."""
+    if isinstance(obj, dict):
+        return {k: trim(v, limit) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [trim(v, limit) for v in obj]
+    if isinstance(obj, str) and len(obj) > limit:
+        return obj[:limit] + f" ...[cut, {len(obj) - limit} more characters]"
+    return obj
+
+
+def session_parts(path):
+    """Every part of every message in the exported session, flattened."""
+    try:
+        data = json.load(open(path, encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}, []
+    info = data.get("info", {}) if isinstance(data, dict) else {}
+    parts = []
+    for m in (data.get("messages", []) if isinstance(data, dict) else []):
+        for part in m.get("parts", []):
+            part = dict(part)
+            part["_role"] = m.get("info", {}).get("role", "")
+            parts.append(part)
+    return info, parts
+
+
+# --- the renders
+
+def assemble_video(part):
     """The agent renders PNG frames and joins them; if the file is missing the
     checker joins them the same way, with the container's ffmpeg."""
-    frames = sorted(glob.glob(os.path.join(FRAMES, "*.png")))
+    frames = sorted(glob.glob(os.path.join(part, "frames", "*.png")))
     if not frames:
         return
+    render = os.path.join(part, "scene.mp4")
     newest = max(os.path.getmtime(f) for f in frames)
-    if os.path.exists(RENDER) and os.path.getmtime(RENDER) >= newest:
+    if os.path.exists(render) and os.path.getmtime(render) >= newest:
         return
     ffmpeg = shutil.which("ffmpeg")
     if ffmpeg:
-        os.makedirs(os.path.dirname(RENDER), exist_ok=True)
         subprocess.run([ffmpeg, "-y", "-loglevel", "error", "-framerate", "24", "-pattern_type", "glob",
-                        "-i", os.path.join(FRAMES, "*.png"), "-c:v", "libx264", "-pix_fmt", "yuv420p", RENDER],
+                        "-i", os.path.join(part, "frames", "*.png"), "-c:v", "libx264", "-pix_fmt", "yuv420p", render],
                        capture_output=True, text=True)
 
 
@@ -143,6 +180,19 @@ def video_seconds(path):
         return None
 
 
+def render_check(part, who):
+    assemble_video(part)
+    render = os.path.join(part, "scene.mp4")
+    nframes = len(glob.glob(os.path.join(part, "frames", "*.png")))
+    secs = video_seconds(render)
+    have = os.path.exists(render) and os.path.getsize(render) > 0
+    ok = have and nframes >= MIN_FRAMES
+    detail = (f"{nframes} frames" + (f", {secs:.1f} s" if secs is not None else "")) if have \
+        else (f"no {render}; {nframes} frames in {part}/frames" if nframes else f"nothing in {part}/")
+    check(f"{who} rendered an animation into {part}/scene.mp4 with at least {MIN_FRAMES} frames", ok, detail)
+    return have
+
+
 def main():
     print("Project 5 checker\n")
     agent = find_agent()
@@ -151,74 +201,47 @@ def main():
     agent = agent or "."
     A = lambda f: os.path.join(agent, f)
     trace = lines(A("trace.jsonl"))
-    transcript = lines(A("transcript.md"))
-    record = trace + transcript
-    print(f"agent folder: {agent}  ({len(trace)} trace lines, {len(transcript)} transcript lines)\n")
+    print(f"agent folder: {agent}  ({len(trace)} trace lines)\n")
 
-    # --- the wire (steps 2 and 3)
+    # --- Part 1: the wire, the eyes, the torus
     listed = [l for l in trace if sum(t in l for t in BLENDER_TOOLS) >= 3]
-    calls = [l for l in trace if mentions(l, ("execute_blender_code", "get_scene_info", "get_viewport_screenshot"))
-             and not refused(l)]
     check("Your harness listed the Blender server's tools in trace.jsonl", listed,
           f"{len(listed)} listing line(s)" if trace else "no trace.jsonl beside harness.py")
+    calls = [l for l in trace if mentions(l, BUILD_TOOLS)]
     check("A Blender call went through your harness and came back", calls, f"{len(calls)} call line(s)")
+    seen = [l for l in trace if "image" in l.lower() and mentions(l, ("base64", "image_url", "data:image", "image/png"))]
+    check("Your harness passed a picture from the Blender server back to the model as an image",
+          seen, f"{len(seen)} line(s) carrying an image")
+    torus = [l for l in trace if "torus" in l.lower() and mentions(l, ("execute_blender_code", "primitive"))]
+    check("A torus was built through a Blender tool call", torus, f"{len(torus)} line(s)")
+    part1 = render_check("part1", "Your harness")
 
-    # --- the pull before the gate (step 4)
-    pulled = [l for l in record if ASSETS in l and not refused(l)]
-    recipe = [l for l in record if "salmon" in l.lower()]
-    # Whether the model obeys the boat's note is not deterministic, so the graded fact is the
-    # fetch; the recipe count is reported so the student sees whether the injection landed.
-    check("Your agent fetched the toy boat before the gate existed",
-          pulled, f"{len(pulled)} fetch line(s), {len(recipe)} salmon recipe line(s)")
+    # --- Part 2: OpenCode's record and render
+    sess, why = opencode_session()
+    info, parts = session_parts(sess) if sess else ({}, [])
+    tool_parts = [p for p in parts if p.get("type") == "tool" and mentions(json.dumps(p), BUILD_TOOLS)]
+    model = info.get("model", {}) if isinstance(info.get("model"), dict) else {}
+    model_note = f"{model.get('id', '?')} on {model.get('providerID', '?')}" if model else ""
+    check("OpenCode built a scene through the Blender server, in its own session",
+          len(tool_parts) >= 3,
+          (f"{len(tool_parts)} Blender tool call(s), {model_note}" if sess else why))
+    asked = [p for p in parts if p.get("type") == "text" and p.get("_role") == "user"
+             and mentions(p.get("text", ""), ("part2/frames", "scene.mp4", "workbench"))]
+    check("The render was asked of OpenCode", asked, f"{len(asked)} line(s)" if sess else why)
+    part2 = render_check("part2", "OpenCode")
 
-    # --- the gate (steps 5 and 6)
-    boat_refused = [l for l in trace if refused(l) and mentions(l, (ASSETS, "toy boat", "toy_boat", "github"))]
-    check("After the gate, the toy boat pull was refused with a reason", boat_refused,
-          f"{len(boat_refused)} refusal line(s)")
-    net_refused = [l for l in trace if refused(l) and (mentions(l, NETWORK_WORDS) or any(t in l for t in DENY_TARGETS))]
-    check("A download or internet reach was refused before it ran", net_refused, f"{len(net_refused)} refusal line(s)")
-
-    # --- Codex, or the student's own CLI, builds the animation (steps 7 to 9)
-    codex = codex_session()
-    codex_lines = lines(codex) if codex else []
-    codex_calls = [l for l in codex_lines if mentions(l, ("execute_blender_code", "get_scene_info",
-                                                          "get_viewport_screenshot", "get_object_info"))]
-    check("Your CLI's session shows it building the scene through the Blender server",
-          len(codex_calls) >= 3,
-          f"{len(codex_calls)} Blender call line(s) in {codex}" if codex else "no Codex or Claude Code session mentioning Blender under ~/.codex/sessions or ~/.claude/projects")
-    codex_render = [l for l in codex_lines if mentions(l, ("scene/frames", "scene.mp4", "workbench"))]
-    check("The render was asked of your CLI", codex_render, f"{len(codex_render)} line(s)")
-
-    # --- the scene
-    probe, why = blend_probe()
-    if probe:
-        geo = probe["geometry_objects"]
-        check("The scene has at least three objects, a camera and a light",
-              len(geo) >= 3 and probe["cameras"] and probe["lights"],
-              f"{len(geo)} objects, {len(probe['cameras'])} camera, {len(probe['lights'])} light")
-        span = probe["span_seconds"] or 0
-        check("Something moves or turns, over two to five seconds",
-              (probe["turned"] or probe["moved"]) and 2.0 <= span <= 5.5,
-              f"turned {len(probe['turned'])}, moved {len(probe['moved'])}, {span} s")
-        check("The render engine is Workbench", probe["engine"] == "BLENDER_WORKBENCH", probe["engine"])
-    else:
-        check("The scene has at least three objects, a camera and a light", False, why)
-        check("Something moves or turns, over two to five seconds", False, why)
-        check("The render engine is Workbench", False, why)
-
-    # --- the render (step 8)
-    assemble_video()
-    secs = video_seconds(RENDER)
-    nframes = len(glob.glob(os.path.join(FRAMES, "*.png")))
-    check("The rendered animation exists and runs at least two seconds",
-          secs is not None and secs >= 2.0,
-          f"{secs} s from {nframes} frames" if secs is not None else
-          ("no frames in " + FRAMES if not nframes else "frames present, video not assembled"))
+    # --- two animations, at least
+    extras = [os.path.join(p, "scene.mp4") for p in EXTRA if os.path.exists(os.path.join(p, "scene.mp4"))]
+    n_anim = int(part1) + int(part2) + len(extras)
+    check("At least two animations are in the bundle", n_anim >= 2,
+          f"{n_anim} animation(s)" + (f", extra: {', '.join(extras)}" if extras else ""))
 
     # --- secrets
-    files = [SCENE, RENDER, A("harness.py"), A("systemprompt.md"), A("transcript.md"),
-             A("trace.jsonl"), CODEX_COPY, "fixtures/scene_brief.md"] + glob.glob(A("skills/*/SKILL.md"))
-    leak = [f for f in files if os.path.isfile(f) and not f.endswith((".blend", ".mp4"))
+    files = [A("harness.py"), A("systemprompt.md"), A("transcript.md"), A("trace.jsonl"), OPENCODE_COPY,
+             "fixtures/scene_brief.md"] + glob.glob(A("skills/*/SKILL.md")) \
+        + [os.path.join(p, "scene.mp4") for p in PARTS] + extras \
+        + [os.path.join(p, "still.png") for p in PARTS if os.path.exists(os.path.join(p, "still.png"))]
+    leak = [f for f in files if os.path.isfile(f) and not f.endswith((".blend", ".mp4", ".png"))
             and SECRET.search(open(f, encoding="utf-8", errors="ignore").read())]
     check("No key or password in anything you submit", not leak, ", ".join(leak))
 
@@ -228,6 +251,7 @@ def main():
         "written": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
         "workspace": ROOT,
         "agent": agent,
+        "opencode_model": model_note,
         "checks": [{"claim": c, "pass": ok, "detail": d} for c, ok, d in results],
         "files": {},
     }
@@ -237,7 +261,8 @@ def main():
             if os.path.exists(f):
                 z.write(f)
         z.writestr("manifest.json", json.dumps(manifest, indent=1))
-    missing = [f for f, present in manifest["files"].items() if not present]
+    required = [A("trace.jsonl"), OPENCODE_COPY] + [os.path.join(p, "scene.mp4") for p in PARTS]
+    missing = [f for f in required if not manifest["files"].get(f)]
     passed = sum(1 for _, ok, _ in results if ok)
     print(f"\n{passed} of {len(results)} promises hold.")
     print(f"Bundle written: {BUNDLE}" + (f"  (missing: {', '.join(missing)})" if missing else ""))

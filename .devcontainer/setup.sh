@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Per-codespace setup, run once when the codespace is created (postCreateCommand). Every
-# install - Blender, its server, the desktop, the harness packages - is already in the
+# install - Blender, its server, the desktop, OpenCode, the harness packages - is already in the
 # published image (.devcontainer/Dockerfile, built by .github/workflows/image.yml). What is
 # left is what belongs to this student: the key, the shell profile, the workspace folders.
 set -uo pipefail
@@ -21,7 +21,7 @@ if [ -n "${LITELLM_API_KEY:-}" ]; then
 fi
 
 log "the harness finds its key and the gateway from every shell"
-PROFILE_LINE='[ -z "${LITELLM_API_KEY:-}" ] && [ -r "$HOME/.config/cse490/key" ] && export LITELLM_API_KEY="$(cat "$HOME/.config/cse490/key")"; export LITELLM_BASE_URL="${LITELLM_BASE_URL:-https://llmproxy.cs.washington.edu}" HARNESS_MODEL="${HARNESS_MODEL:-external/haiku-5-5}"'
+PROFILE_LINE='[ -z "${LITELLM_API_KEY:-}" ] && [ -r "$HOME/.config/cse490/key" ] && export LITELLM_API_KEY="$(cat "$HOME/.config/cse490/key")"; export LITELLM_BASE_URL="${LITELLM_BASE_URL:-https://llmproxy.cs.washington.edu}" HARNESS_MODEL="${HARNESS_MODEL:-external/sonnet-5}"'
 for rc in "$HOME/.bashrc" "$HOME/.zshrc" "$HOME/.profile"; do
   grep -q 'LITELLM_BASE_URL' "$rc" 2>/dev/null || echo "$PROFILE_LINE" >> "$rc"
 done
@@ -35,30 +35,84 @@ for d in /usr/local/novnc/noVNC-*; do
     | sudo tee "$d/index.html" >/dev/null && echo "auto-connect page in $d"
 done
 
-log "Codex finds the course gateway, your key by name, and the Blender server in its own config"
-# The OpenAI Codex CLI speaks the Responses API, which the gateway serves at /v1/responses
-# (measured 2026-10-15). The key is named, never written: Codex reads LITELLM_API_KEY at run time.
-mkdir -p "$HOME/.codex"
-cat > "$HOME/.codex/config.toml" <<EOF
-model = "${HARNESS_MODEL:-external/haiku-5-5}"
-model_provider = "uw"
-approval_policy = "on-request"
-sandbox_mode = "workspace-write"
-
-[model_providers.uw]
-name = "UW course gateway"
-base_url = "${LITELLM_BASE_URL:-https://llmproxy.cs.washington.edu}/v1"
-env_key = "LITELLM_API_KEY"
-wire_api = "responses"
-
-[mcp_servers.blender]
-command = "/home/vscode/.local/bin/uvx"
-args = ["blender-mcp==1.9.1"]
-env = { BLENDER_MCP_SAFE_MODE = "1", BLENDER_MCP_DISABLE_TELEMETRY = "true", BLENDER_HOST = "localhost", BLENDER_PORT = "9876" }
-EOF
-echo "codex config written to $HOME/.codex/config.toml"
+log "OpenCode finds its model, your key by name, and the Blender server in its own config"
+# Part 2 runs the OpenCode CLI. Its model is DeepSeek V4.1 Flash on the UW Purple API, an
+# OpenAI-compatible endpoint behind Azure API Management that reads the key from an api-key
+# header. The values below are the owner's working config of 2026-10-23 (opencode.json on the
+# course machine); CONFIRM FOR STUDENTS before the project opens. The key is named, never
+# written: OpenCode reads PURPLE_API_KEY from the environment at run time. When that secret is
+# absent the config falls back to the course gateway with a stand-in model, so a TA can test
+# the Part 2 steps today.
+PURPLE_BASE_URL="${PURPLE_BASE_URL:-https://apim-n1ai-usw2-065882797.azure-api.net/openai/v1}"
+PURPLE_MODEL="${PURPLE_MODEL:-DeepSeek-V4.1-Flash}"     # the model id Purple serves
+GATEWAY_STAND_IN="external/deepseek.v3.2"              # until Purple's key reaches the codespace
+if [ -n "${PURPLE_API_KEY:-}" ]; then
+  mkdir -p "$HOME/.config/cse490" && printf '%s' "$PURPLE_API_KEY" > "$HOME/.config/cse490/purple-key" && chmod 600 "$HOME/.config/cse490/purple-key"
+  DEFAULT_MODEL="purple/${PURPLE_MODEL}"
+  echo "Purple key present: OpenCode starts on ${DEFAULT_MODEL}"
+else
+  DEFAULT_MODEL="uw/${GATEWAY_STAND_IN}"
+  echo "no PURPLE_API_KEY secret: OpenCode starts on the course gateway's ${GATEWAY_STAND_IN} until it is set"
+fi
+mkdir -p "$HOME/.config/opencode"
+cat > "$HOME/.config/opencode/opencode.json" <<EOF2
+{
+  "\$schema": "https://opencode.ai/config.json",
+  "model": "${DEFAULT_MODEL}",
+  "provider": {
+    "purple": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "UW Purple API",
+      "options": {
+        "baseURL": "${PURPLE_BASE_URL}",
+        "headers": { "api-key": "{env:PURPLE_API_KEY}" }
+      },
+      "models": {
+        "${PURPLE_MODEL}": {
+          "name": "DeepSeek V4.1 Flash (UW Purple)",
+          "tool_call": true,
+          "attachment": true,
+          "modalities": { "input": ["text", "image"], "output": ["text"] },
+          "limit": { "context": 128000, "output": 16384 }
+        }
+      }
+    },
+    "uw": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "UW course gateway",
+      "options": {
+        "baseURL": "${LITELLM_BASE_URL:-https://llmproxy.cs.washington.edu}/v1",
+        "apiKey": "{env:LITELLM_API_KEY}"
+      },
+      "models": {
+        "${GATEWAY_STAND_IN}": { "name": "${GATEWAY_STAND_IN} (course gateway, stand-in)", "tool_call": true,
+                                 "limit": { "context": 128000, "output": 8000 } }
+      }
+    }
+  },
+  "mcp": {
+    "blender": {
+      "type": "local",
+      "command": ["/home/vscode/.local/bin/uvx", "blender-mcp==1.9.1"],
+      "environment": {
+        "BLENDER_MCP_SAFE_MODE": "1",
+        "BLENDER_MCP_DISABLE_TELEMETRY": "true",
+        "BLENDER_HOST": "localhost",
+        "BLENDER_PORT": "9876"
+      },
+      "enabled": true
+    }
+  }
+}
+EOF2
+echo "opencode config written to $HOME/.config/opencode/opencode.json"
+# every shell finds the Purple key the same way it finds the course key
+PURPLE_LINE='[ -z "${PURPLE_API_KEY:-}" ] && [ -r "$HOME/.config/cse490/purple-key" ] && export PURPLE_API_KEY="$(cat "$HOME/.config/cse490/purple-key")"; export PATH="$HOME/.opencode/bin:$PATH"'
+for rc in "$HOME/.bashrc" "$HOME/.zshrc" "$HOME/.profile"; do
+  grep -q 'purple-key' "$rc" 2>/dev/null || echo "$PURPLE_LINE" >> "$rc"
+done
 
 log "folders the build writes into"
-mkdir -p scene scene/frames submission
+mkdir -p part1/frames part2/frames submission
 
 log "done. Blender's window starts on every codespace start (start-blender.sh)."

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Nine checks that the codespace is ready for the build. Run: bash smoke.sh
+# The checks that the codespace is ready for the build. Run: bash smoke.sh
 export PATH="$HOME/.local/bin:$PATH"
 # an SSH session does not receive Codespaces secrets; the setup step kept a private copy
 [ -z "${LITELLM_API_KEY:-}" ] && [ -r "$HOME/.config/cse490/key" ] && export LITELLM_API_KEY="$(cat "$HOME/.config/cse490/key")"
@@ -37,8 +37,10 @@ code=$(curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer ${LITELL
 
 ls "$HOME/.vscode-remote/extensions" "$HOME/.vscode-server/extensions" 2>/dev/null | grep -q "vivswan.litellm-vscode-chat" && pass "LiteLLM chat extension installed in the codespace" || fail "LiteLLM chat extension (Extensions panel: install LiteLLM Provider for GitHub Copilot Chat)"
 
-command -v codex >/dev/null 2>&1 && pass "codex $(codex --version 2>/dev/null | head -1 | awk '{print $NF}')" || fail "codex (the image installs it; rebuild the codespace)"
-grep -q 'wire_api = "responses"' "$HOME/.codex/config.toml" 2>/dev/null && grep -q 'mcp_servers.blender' "$HOME/.codex/config.toml" && pass "codex points at the course gateway and the Blender server" || fail "codex config (rerun: bash .devcontainer/setup.sh)"
+export PATH="$HOME/.opencode/bin:$PATH"
+command -v opencode >/dev/null 2>&1 && pass "opencode $(opencode --version 2>/dev/null | tail -1)" || fail "opencode (the image installs it; rebuild the codespace)"
+grep -q '"purple"' "$HOME/.config/opencode/opencode.json" 2>/dev/null && grep -q '"blender"' "$HOME/.config/opencode/opencode.json" && pass "opencode config names the Purple API and the Blender server" || fail "opencode config (rerun: bash .devcontainer/setup.sh)"
+if [ -n "${PURPLE_API_KEY:-}" ] || [ -r "$HOME/.config/cse490/purple-key" ]; then pass "Purple API key present"; else echo "NOTE    no PURPLE_API_KEY secret: OpenCode runs on the course gateway's stand-in model until you add one"; fi
 
 echo; echo "$ok ok, $bad missing"
 [ "$bad" -eq 0 ]

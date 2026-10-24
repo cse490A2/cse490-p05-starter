@@ -1,4 +1,4 @@
-# Runs inside Blender, headless:  blender -b scene/scene.blend --python checker_blend.py
+# Runs inside Blender, headless:  blender -b part1/scene.blend --python checker_blend.py
 # Prints one JSON line describing the scene. checker.py reads it. Nothing here is a
 # verdict; the verdicts are in checker.py so their wording lives in one place.
 import json

@@ -36,4 +36,4 @@ jobs:
           imageName: ghcr.io/cse490a2/cse490-p05-blender   # lowercase: the registry refuses the org's capital letters
           imageTag: latest
           push: always
-          runCmd: blender --version && uvx --version && python3 -c "import mcp, openai; print('packages ok')"
+          runCmd: blender --version && uvx --version && /home/vscode/.opencode/bin/opencode --version && python3 -c "import mcp, openai; print('packages ok')"

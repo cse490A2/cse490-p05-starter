@@ -2,5 +2,5 @@
 __pycache__/
 *.pyc
 submission/
-scene/*.blend1
-cli_session.jsonl
+part*/*.blend1
+opencode_session.json

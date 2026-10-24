@@ -43,10 +43,12 @@ RUN curl -LsSf https://astral.sh/uv/install.sh | sh \
  && timeout 180 uvx "blender-mcp==${BLENDER_MCP_VERSION}" --help >/dev/null 2>&1 || true
 RUN mkdir -p "/home/vscode/.config/blender/${BLENDER_SERIES}/scripts/addons" \
  && uvx "blender-mcp==${BLENDER_MCP_VERSION}" install-addon || true
-# The OpenAI Codex CLI, the agent that builds the animation (owner direction 2026-10-15). The
-# standalone installer puts the binary in ~/.local/bin and its releases under ~/.codex; no Node.
-# setup.sh writes its config at create time: the course gateway over the Responses API, the key
-# by name, and the Blender server.
-RUN curl -fsSL https://chatgpt.com/codex/install.sh | CODEX_NON_INTERACTIVE=1 sh \
- && codex --version
+# The OpenCode CLI, the agent that builds the Part 2 animation (owner direction 2026-10-23;
+# it replaces the OpenAI Codex CLI of 2026-10-15). The official installer puts the binary in
+# ~/.opencode/bin; no Node. setup.sh writes its config at create time: DeepSeek V4.1 Flash on the
+# UW Purple API when the student's PURPLE_API_KEY secret exists, the course gateway otherwise,
+# and the Blender server.
+RUN curl -fsSL https://opencode.ai/install | bash \
+ && /home/vscode/.opencode/bin/opencode --version
+ENV PATH="/home/vscode/.opencode/bin:${PATH}"
 USER root
