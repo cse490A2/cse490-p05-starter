@@ -45,7 +45,7 @@ BLENDER_TOOLS = ("get_scene_info", "get_object_info", "get_viewport_screenshot",
                  "set_texture", "download_polyhaven_asset", "download_sketchfab_model",
                  "generate_hyper3d_model_via_text", "import_generated_asset")
 BUILD_TOOLS = ("execute_blender_code", "get_scene_info", "get_viewport_screenshot", "get_object_info")
-SECRET = re.compile(r"\bsk-[A-Za-z0-9_\-]{12,}")
+SECRET = re.compile(r"\bsk-[A-Za-z0-9_\-]{12,}|\b(password|passwd|token|api[_-]?key)\b\s*[:=]\s*['\"]?[A-Za-z0-9_\-]{8,}", re.I)
 
 results = []
 
@@ -168,29 +168,53 @@ def assemble_video(part):
                        capture_output=True, text=True)
 
 
-def video_seconds(path):
-    ffprobe = shutil.which("ffprobe")
-    if not ffprobe or not os.path.exists(path):
-        return None
-    p = subprocess.run([ffprobe, "-v", "error", "-show_entries", "format=duration",
-                        "-of", "default=nw=1:nk=1", path], capture_output=True, text=True)
+def frames_of(part):
+    return sorted(glob.glob(os.path.join(part, "frames", "*.png")))
+
+
+def motion(part):
+    """The first and last frame differ in more than one percent of pixels. Pillow when it
+    is installed; otherwise a byte-level comparison of the decoded-size-agnostic PNG
+    bytes, which the detail line says."""
+    fr = frames_of(part)
+    if len(fr) < 2:
+        return False, f"{len(fr)} frame(s) in {part}/frames"
     try:
-        return float(p.stdout.strip())
-    except ValueError:
-        return None
+        from PIL import Image, ImageChops
+        a, b = Image.open(fr[0]).convert("RGB"), Image.open(fr[-1]).convert("RGB")
+        if a.size != b.size:
+            return True, f"{len(fr)} frames, first and last differ in size"
+        diff = ImageChops.difference(a, b).convert("L").getdata()
+        changed = sum(1 for v in diff if v > 8)
+        share = changed / max(1, a.size[0] * a.size[1])
+        return share > 0.01, f"{len(fr)} frames, {share:.1%} of pixels differ"
+    except ImportError:
+        x, y = open(fr[0], "rb").read(), open(fr[-1], "rb").read()
+        n = max(len(x), len(y))
+        d = sum(1 for i in range(n) if (x[i:i+1] or b"\0") != (y[i:i+1] or b"\0"))
+        return d / max(1, n) > 0.01, f"{len(fr)} frames, {d / max(1, n):.1%} of bytes differ (Pillow absent, byte-level fallback)"
 
 
-def render_check(part, who):
-    assemble_video(part)
+def duration(part):
+    """Frame count over the frame rate the mp4 reports, 24 when it reports none."""
     render = os.path.join(part, "scene.mp4")
-    nframes = len(glob.glob(os.path.join(part, "frames", "*.png")))
-    secs = video_seconds(render)
-    have = os.path.exists(render) and os.path.getsize(render) > 0
-    ok = have and nframes >= MIN_FRAMES
-    detail = (f"{nframes} frames" + (f", {secs:.1f} s" if secs is not None else "")) if have \
-        else (f"no {render}; {nframes} frames in {part}/frames" if nframes else f"nothing in {part}/")
-    check(f"{who} rendered an animation into {part}/scene.mp4 with at least {MIN_FRAMES} frames", ok, detail)
-    return have
+    if not (os.path.exists(render) and os.path.getsize(render) > 0):
+        return None, f"no {render}"
+    fps, n = 24.0, len(frames_of(part))
+    ffprobe = shutil.which("ffprobe")
+    if ffprobe:
+        p = subprocess.run([ffprobe, "-v", "error", "-select_streams", "v:0", "-count_frames",
+                            "-show_entries", "stream=r_frame_rate,nb_read_frames", "-of", "json", render],
+                           capture_output=True, text=True)
+        try:
+            st = json.loads(p.stdout)["streams"][0]
+            num, den = st.get("r_frame_rate", "24/1").split("/")
+            fps = float(num) / float(den or 1) or 24.0
+            n = int(st.get("nb_read_frames") or n)
+        except (ValueError, KeyError, IndexError, ZeroDivisionError):
+            pass
+    secs = n / fps if fps else 0.0
+    return secs, f"{n} frames at {fps:g} fps, {secs:.1f} s"
 
 
 def main():
@@ -203,40 +227,42 @@ def main():
     trace = lines(A("trace.jsonl"))
     print(f"agent folder: {agent}  ({len(trace)} trace lines)\n")
 
-    # --- Part 1: the wire, the eyes, the torus
-    listed = [l for l in trace if sum(t in l for t in BLENDER_TOOLS) >= 3]
-    check("Your harness listed the Blender server's tools in trace.jsonl", listed,
-          f"{len(listed)} listing line(s)" if trace else "no trace.jsonl beside harness.py")
-    calls = [l for l in trace if mentions(l, BUILD_TOOLS)]
-    check("A Blender call went through your harness and came back", calls, f"{len(calls)} call line(s)")
-    seen = [l for l in trace if "image" in l.lower() and mentions(l, ("base64", "image_url", "data:image", "image/png"))]
-    check("Your harness passed a picture from the Blender server back to the model as an image",
-          seen, f"{len(seen)} line(s) carrying an image")
-    torus = [l for l in trace if "torus" in l.lower() and mentions(l, ("execute_blender_code", "primitive"))]
-    check("A torus was built through a Blender tool call", torus, f"{len(torus)} line(s)")
-    part1 = render_check("part1", "Your harness")
-
-    # --- Part 2: OpenCode's record and render
     sess, why = opencode_session()
     info, parts = session_parts(sess) if sess else ({}, [])
-    tool_parts = [p for p in parts if p.get("type") == "tool" and mentions(json.dumps(p), BUILD_TOOLS)]
     model = info.get("model", {}) if isinstance(info.get("model"), dict) else {}
     model_note = f"{model.get('id', '?')} on {model.get('providerID', '?')}" if model else ""
-    check("OpenCode built a scene through the Blender server, in its own session",
-          len(tool_parts) >= 3,
-          (f"{len(tool_parts)} Blender tool call(s), {model_note}" if sess else why))
-    asked = [p for p in parts if p.get("type") == "text" and p.get("_role") == "user"
-             and mentions(p.get("text", ""), ("part2/frames", "scene.mp4", "workbench"))]
-    check("The render was asked of OpenCode", asked, f"{len(asked)} line(s)" if sess else why)
-    part2 = render_check("part2", "OpenCode")
+    for part in PARTS:
+        assemble_video(part)
 
-    # --- two animations, at least
+    # C01, C02
+    listed = [l for l in trace if sum(t in l for t in BLENDER_TOOLS) >= 3 and "get_scene_info" in l and "execute_blender_code" in l]
+    check("Your harness listed the Blender server's tools in trace.jsonl", listed,
+          f"{len(listed)} listing line(s)" if trace else "no trace.jsonl beside harness.py")
+    calls = [i for i, l in enumerate(trace) if mentions(l, BUILD_TOOLS)]
+    returned = [i for i in calls if any(mentions(trace[j], ("result", "reply", "content", "output")) for j in range(i, min(i + 2, len(trace))))]
+    check("A Blender call went through your harness and came back", returned, f"{len(returned)} call line(s) with a result")
+    # C03
+    seen = [l for l in trace if mentions(l, ("image_url", "data:image", "image/png", '"image"', "'image'"))
+            and mentions(l, ("base64", "image_url", "data:image", "image/png"))]
+    check("Your harness passed a picture of the Blender window to the model", seen, f"{len(seen)} line(s) carrying an image part")
+    # C04
+    torus = [l for l in trace if "torus" in l.lower() and mentions(l, ("execute_blender_code", "primitive_torus_add", "get_scene_info"))]
+    check("A torus was built through your harness", torus, f"{len(torus)} line(s)")
+    # C05
+    ok, det = motion("part1"); check("Part 1's animation moves", ok, det)
+    # C06, C07
+    tool_parts = [p for p in parts if p.get("type") == "tool" and mentions(json.dumps(p), BUILD_TOOLS)]
+    check("OpenCode's session shows it building through the Blender server", len(tool_parts) >= 3,
+          f"{len(tool_parts)} Blender tool call(s), {model_note}" if sess else why)
+    asked = [p for p in parts if mentions(json.dumps(p), ("part2/frames", "scene.mp4", "workbench"))]
+    check("The Part 2 render was asked of OpenCode", asked, f"{len(asked)} session entr(ies)" if sess else why)
+    # C08
+    ok, det = motion("part2"); check("Part 2's animation moves", ok, det)
+    # C09, C10
+    secs, det = duration("part1"); check("Part 1's rendered animation exists and runs at least two seconds", secs is not None and secs >= 2.0, det)
+    secs2, det2 = duration("part2"); check("Part 2's rendered animation exists and runs at least two seconds", secs2 is not None and secs2 >= 2.0, det2)
+    # C11
     extras = [os.path.join(p, "scene.mp4") for p in EXTRA if os.path.exists(os.path.join(p, "scene.mp4"))]
-    n_anim = int(part1) + int(part2) + len(extras)
-    check("At least two animations are in the bundle", n_anim >= 2,
-          f"{n_anim} animation(s)" + (f", extra: {', '.join(extras)}" if extras else ""))
-
-    # --- secrets
     files = [A("harness.py"), A("systemprompt.md"), A("transcript.md"), A("trace.jsonl"), OPENCODE_COPY,
              "fixtures/scene_brief.md"] + glob.glob(A("skills/*/SKILL.md")) \
         + [os.path.join(p, "scene.mp4") for p in PARTS] + extras \
@@ -244,6 +270,13 @@ def main():
     leak = [f for f in files if os.path.isfile(f) and not f.endswith((".blend", ".mp4", ".png"))
             and SECRET.search(open(f, encoding="utf-8", errors="ignore").read())]
     check("No key or password in anything you submit", not leak, ", ".join(leak))
+    # C12
+    workbench = [l for l in trace if ("workbench" in l.lower() and mentions(l, ("part1/frames", "scene.mp4")))
+                 or ("BLENDER_WORKBENCH" in l and "part1/" in l)]
+    check("The Part 1 render was asked of your harness with the Workbench engine", workbench, f"{len(workbench)} line(s)")
+    # C13, C14: not the checker's to decide
+    print("C13 is judged by the grader: each scene is the one its prompts asked for, and neither is a pelican on a bicycle")
+    print("C14 attendance is read by the grader from the wizard's attendance card")
 
     # --- bundle
     os.makedirs(BUNDLE_DIR, exist_ok=True)
@@ -261,7 +294,7 @@ def main():
             if os.path.exists(f):
                 z.write(f)
         z.writestr("manifest.json", json.dumps(manifest, indent=1))
-    required = [A("trace.jsonl"), OPENCODE_COPY] + [os.path.join(p, "scene.mp4") for p in PARTS]
+    required = [A("harness.py"), A("trace.jsonl"), OPENCODE_COPY] + [os.path.join(p, "scene.mp4") for p in PARTS]
     missing = [f for f in required if not manifest["files"].get(f)]
     passed = sum(1 for _, ok, _ in results if ok)
     print(f"\n{passed} of {len(results)} promises hold.")
