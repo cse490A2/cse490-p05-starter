@@ -26,6 +26,16 @@ for rc in "$HOME/.bashrc" "$HOME/.zshrc" "$HOME/.profile"; do
   grep -q 'LITELLM_BASE_URL' "$rc" 2>/dev/null || echo "$PROFILE_LINE" >> "$rc"
 done
 
+log "the Purple API values reach every shell: the harness reads PURPLE_API_KEY, PURPLE_BASE_URL and PURPLE_MODEL"
+PURPLE_LINE='[ -z "${PURPLE_API_KEY:-}" ] && [ -r "$HOME/.config/cse490/purple-key" ] && export PURPLE_API_KEY="$(cat "$HOME/.config/cse490/purple-key")"; export PURPLE_BASE_URL="${PURPLE_BASE_URL:-https://apim-n1ai-usw2-065882797.azure-api.net/openai/v1}"; export PURPLE_MODEL="${PURPLE_MODEL:-DeepSeek-V4.1-Flash}"'
+for rc in "$HOME/.bashrc" "$HOME/.zshrc" "$HOME/.profile"; do
+  grep -q 'PURPLE_BASE_URL' "$rc" 2>/dev/null || echo "$PURPLE_LINE" >> "$rc"
+done
+if [ -n "${PURPLE_API_KEY:-}" ]; then
+  mkdir -p "$HOME/.config/cse490" && chmod 700 "$HOME/.config/cse490"
+  printf '%s' "$PURPLE_API_KEY" > "$HOME/.config/cse490/purple-key" && chmod 600 "$HOME/.config/cse490/purple-key"
+fi
+
 log "the Blender window connects by itself at the port's bare address"
 # The desktop feature serves noVNC; its front page is a connect form. The editor's auto-preview
 # opens the bare address, so that page becomes a redirect to the auto-connecting one.
@@ -63,7 +73,7 @@ if [ -n "${PURPLE_API_KEY:-}" ]; then
   echo "Purple key present: OpenCode starts on ${DEFAULT_MODEL}"
 else
   DEFAULT_MODEL="uw/${GATEWAY_STAND_IN}"
-  echo "no PURPLE_API_KEY secret: OpenCode starts on the course gateway's ${GATEWAY_STAND_IN} until it is set"
+  echo "no PURPLE_API_KEY secret: Part 1's harness and OpenCode both need it (GitHub Settings, Codespaces, Secrets; then restart the codespace); OpenCode starts on the course gateway's ${GATEWAY_STAND_IN} until it is set"
 fi
 mkdir -p "$HOME/.config/opencode"
 cat > "$HOME/.config/opencode/opencode.json" <<EOF2

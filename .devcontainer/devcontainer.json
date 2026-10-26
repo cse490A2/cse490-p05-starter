@@ -20,7 +20,7 @@
       "description": "Your course key from the course staff. It starts with sk-. Your harness and the chat both use it."
     },
     "PURPLE_API_KEY": {
-      "description": "Your UW Purple API key, for OpenCode in Part 2. Optional: without it OpenCode uses the course gateway."
+      "description": "Your UW Purple API key. Your harness in Part 1 and OpenCode in Part 2 both use it."
     }
   },
   "containerEnv": {
@@ -30,7 +30,9 @@
     "DISPLAY": ":1",
     "LIBGL_ALWAYS_SOFTWARE": "1",
     "GALLIUM_DRIVER": "llvmpipe",
-    "HARNESS_MODEL": "external/sonnet-5"
+    "HARNESS_MODEL": "DeepSeek-V4.1-Flash",
+    "PURPLE_BASE_URL": "https://apim-n1ai-usw2-065882797.azure-api.net/openai/v1",
+    "PURPLE_MODEL": "DeepSeek-V4.1-Flash"
   },
   "remoteEnv": {
     "PATH": "/home/vscode/.local/bin:/home/vscode/.opencode/bin:${containerEnv:PATH}"

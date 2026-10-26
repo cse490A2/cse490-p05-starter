@@ -20,23 +20,22 @@ laptop, RULES.md says what to install.
 
 Clone your Project 4 harness repo into this workspace, in its own folder, and copy skills/ from
 here into it. Your agent runs from that folder; its trace.jsonl and transcript.md land there,
-and checker.py finds them. The codespace already holds your course key and the gateway
-address in the environment, so the harness runs without a .env file. The harness model is
-Sonnet 5 (HARNESS_MODEL in the environment).
+and checker.py finds them. The codespace holds your course key (for the
+LiteLLM chat) and your Purple key, endpoint and model in the environment (PURPLE_API_KEY,
+PURPLE_BASE_URL, PURPLE_MODEL): point the harness at them as the setup instructions show. The
+harness model is DeepSeek V4.1 Flash on the UW Purple API.
 
-## Part 1, Part 2, Part 3
+## Part 1, and the optional Part 2
 
 Part 1 is your harness's work: it gains the Blender tools, passes the server's pictures back to
-the model as images, builds your animation and renders it into part1/. Part 2 is OpenCode's:
-`opencode` in the terminal starts the OpenCode CLI. Setup pointed it at DeepSeek V4.1 Flash on
-the UW Purple API when the PURPLE_API_KEY secret exists, and at the course gateway otherwise,
-and at the same Blender server your harness uses. Stop your harness (Ctrl+C) before you start
-OpenCode: Blender takes one connection at a time. OpenCode renders into part2/. Part 3 is
-optional: your own CLI agent with the Blender server from RULES.md added to its MCP
-configuration, into part3/ if you want it in the bundle.
+the model as images, builds your animation and renders it into part1/. Part 2 is optional, OpenCode's or your
+own CLI's: `opencode` in the terminal starts the OpenCode CLI, which setup pointed at DeepSeek
+V4.1 Flash on the UW Purple API and at the same Blender server your harness uses. Stop your
+harness (Ctrl+C) before you start OpenCode: Blender takes one connection at a time. OpenCode
+renders into part2/. Part 2 is not graded; its animation rides along in the bundle if you made it.
 
-checker.py bundles trace.jsonl, every part's scene.mp4, and OpenCode's record of the build
-(its session, exported as JSON) and tells you which of the handout's promises hold.
+checker.py bundles trace.jsonl and part1/scene.mp4, plus part2/scene.mp4 and OpenCode's session
+record when they exist, and tells you which of the handout's promises hold.
 
 ## Every open arranges the screen
 

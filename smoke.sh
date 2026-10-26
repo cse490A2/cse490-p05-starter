@@ -40,7 +40,10 @@ ls "$HOME/.vscode-remote/extensions" "$HOME/.vscode-server/extensions" 2>/dev/nu
 export PATH="$HOME/.opencode/bin:$PATH"
 command -v opencode >/dev/null 2>&1 && pass "opencode $(opencode --version 2>/dev/null | tail -1)" || fail "opencode (the image installs it; rebuild the codespace)"
 grep -q '"purple"' "$HOME/.config/opencode/opencode.json" 2>/dev/null && grep -q '"blender"' "$HOME/.config/opencode/opencode.json" && pass "opencode config names the Purple API and the Blender server" || fail "opencode config (rerun: bash .devcontainer/setup.sh)"
-if [ -n "${PURPLE_API_KEY:-}" ] || [ -r "$HOME/.config/cse490/purple-key" ]; then pass "Purple API key present"; else echo "NOTE    no PURPLE_API_KEY secret: OpenCode runs on the course gateway's stand-in model until you add one"; fi
+[ -z "${PURPLE_API_KEY:-}" ] && [ -r "$HOME/.config/cse490/purple-key" ] && export PURPLE_API_KEY="$(cat "$HOME/.config/cse490/purple-key")"
+if [ -n "${PURPLE_API_KEY:-}" ]; then pass "Purple API key present"; else fail "PURPLE_API_KEY secret: your harness and OpenCode both need it (GitHub Settings, Codespaces, Secrets; then restart the codespace)"; fi
+pcode=$(curl -s -o /dev/null -w '%{http_code}' -X POST -H "api-key: ${PURPLE_API_KEY:-none}" -H "Content-Type: application/json" -d '{"model":"'"${PURPLE_MODEL:-DeepSeek-V4.1-Flash}"'","messages":[{"role":"user","content":"ok"}],"max_tokens":1}' "${PURPLE_BASE_URL:-https://apim-n1ai-usw2-065882797.azure-api.net/openai/v1}/chat/completions")
+[ "$pcode" = "200" ] && pass "Purple API answers to your key" || fail "Purple API (HTTP $pcode; 403 with a message about quota means today's allowance is spent, it resets at midnight UTC)"
 
 echo; echo "$ok ok, $bad missing"
 [ "$bad" -eq 0 ]

@@ -14,7 +14,8 @@ and OpenCode's config carry the same command. Safe mode and telemetry-off stay o
 The Python SDK is the `mcp` package (version 2, already installed). The pieces the harness needs:
 `stdio_client` to start the server, `ClientSession` on its streams, `list_tools` for the tool
 list, `call_tool` to run one. Each listed tool has a `name`, a `description` and an
-`input_schema`; turn each into a tool definition in the shape the model API already takes and add
+`input_schema` (this SDK names its fields in snake_case: `input_schema`, `is_error`, and an image
+part's `mime_type` and `data`); turn each into a tool definition in the shape the model API already takes and add
 it beside read_file, write_file and execute. A call's result goes back to the model as a tool
 result, the same way the harness's own tools do. A result may carry an image part, not text:
 `get_viewport_screenshot` answers with a PNG of the Blender window. Pass that part to the model
@@ -38,7 +39,8 @@ The same server, the same addon, on your own machine:
    harness's MCP config and in OpenCode's config the way the codespace's setup.sh does.
 
 Nothing sandboxes an agent on your laptop: it runs with your files and your network. Read what
-it asks to run.
+it asks to run. A path you hand Blender resolves against Blender's own working directory, not your
+harness folder: launch Blender from the workspace, or give it absolute paths.
 
 ## The tools
 

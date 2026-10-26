@@ -13,11 +13,10 @@ reads the files beside it: trace.jsonl, transcript.md, systemprompt.md and skill
 The trace's line shape is yours; the checker reads each line as text and looks for
 what the handout names. The Part 1 render lands in part1/.
 
-Part 2 is OpenCode's work, and OpenCode keeps its own record: its sessions live in
-~/.local/share/opencode/opencode.db. The newest session that mentions Blender is
-exported with `opencode export <id>` into opencode_session.json beside this file,
-and the checks read that copy. The Part 2 render lands in part2/. A Part 3 render,
-if you made one, lands in part3/ and rides along in the bundle.
+Part 2 is optional and not graded. If you made it, its render in part2/ rides along in
+the bundle, and when OpenCode built it, OpenCode's own record comes too: its sessions
+live in ~/.local/share/opencode/opencode.db, and the newest one that mentions Blender is
+exported with `opencode export <id>` into opencode_session.json beside this file.
 """
 import datetime
 import glob
@@ -33,8 +32,8 @@ import zipfile
 ROOT = os.path.abspath(os.path.dirname(__file__))
 os.chdir(ROOT)
 
-PARTS = ("part1", "part2")                      # graded
-EXTRA = sorted(set(os.path.dirname(p) for p in glob.glob("part*/scene.mp4")) - set(PARTS))
+PARTS = ("part1",)                              # graded
+EXTRA = sorted(set(os.path.dirname(p) for p in glob.glob("part*/scene.mp4")) - set(PARTS))   # part2 and any more: optional, bundled when present
 BUNDLE_DIR = "submission"
 BUNDLE = os.path.join(BUNDLE_DIR, "p05-bundle.zip")
 OPENCODE_DB = os.path.expanduser("~/.local/share/opencode/opencode.db")
@@ -231,7 +230,7 @@ def main():
     info, parts = session_parts(sess) if sess else ({}, [])
     model = info.get("model", {}) if isinstance(info.get("model"), dict) else {}
     model_note = f"{model.get('id', '?')} on {model.get('providerID', '?')}" if model else ""
-    for part in PARTS:
+    for part in PARTS + tuple(EXTRA):
         assemble_video(part)
 
     # C01, C02
@@ -250,18 +249,9 @@ def main():
     check("A torus was built through your harness", torus, f"{len(torus)} line(s)")
     # C05
     ok, det = motion("part1"); check("Part 1's animation moves", ok, det)
-    # C06, C07
-    tool_parts = [p for p in parts if p.get("type") == "tool" and mentions(json.dumps(p), BUILD_TOOLS)]
-    check("OpenCode's session shows it building through the Blender server", len(tool_parts) >= 3,
-          f"{len(tool_parts)} Blender tool call(s), {model_note}" if sess else why)
-    asked = [p for p in parts if mentions(json.dumps(p), ("part2/frames", "scene.mp4", "workbench"))]
-    check("The Part 2 render was asked of OpenCode", asked, f"{len(asked)} session entr(ies)" if sess else why)
-    # C08
-    ok, det = motion("part2"); check("Part 2's animation moves", ok, det)
-    # C09, C10
+    # C06
     secs, det = duration("part1"); check("Part 1's rendered animation exists and runs at least two seconds", secs is not None and secs >= 2.0, det)
-    secs2, det2 = duration("part2"); check("Part 2's rendered animation exists and runs at least two seconds", secs2 is not None and secs2 >= 2.0, det2)
-    # C11
+    # C07
     extras = [os.path.join(p, "scene.mp4") for p in EXTRA if os.path.exists(os.path.join(p, "scene.mp4"))]
     files = [A("harness.py"), A("systemprompt.md"), A("transcript.md"), A("trace.jsonl"), OPENCODE_COPY,
              "fixtures/scene_brief.md"] + glob.glob(A("skills/*/SKILL.md")) \
@@ -270,13 +260,17 @@ def main():
     leak = [f for f in files if os.path.isfile(f) and not f.endswith((".blend", ".mp4", ".png"))
             and SECRET.search(open(f, encoding="utf-8", errors="ignore").read())]
     check("No key or password in anything you submit", not leak, ", ".join(leak))
-    # C12
+    # C08
     workbench = [l for l in trace if ("workbench" in l.lower() and mentions(l, ("part1/frames", "scene.mp4")))
                  or ("BLENDER_WORKBENCH" in l and "part1/" in l)]
     check("The Part 1 render was asked of your harness with the Workbench engine", workbench, f"{len(workbench)} line(s)")
-    # C13, C14: not the checker's to decide
-    print("C13 is judged by the grader: each scene is the one its prompts asked for, and neither is a pelican on a bicycle")
-    print("C14 attendance is read by the grader from the wizard's attendance card")
+    # C09, C10: not the checker's to decide
+    print("C09 is judged by the grader: the scene is the one your prompts asked for, and it is not a pelican on a bicycle")
+    print("C10 attendance is read by the grader from the wizard's attendance card")
+    # Part 2, optional and not graded: say what rides along
+    for p in EXTRA:
+        secs2, det2 = duration(p)
+        print(f"NOTE    {p}/scene.mp4 present, optional and not graded: {det2}" + (f"; OpenCode's session: {model_note}" if sess and p == "part2" else ""))
 
     # --- bundle
     os.makedirs(BUNDLE_DIR, exist_ok=True)
@@ -294,7 +288,7 @@ def main():
             if os.path.exists(f):
                 z.write(f)
         z.writestr("manifest.json", json.dumps(manifest, indent=1))
-    required = [A("harness.py"), A("trace.jsonl"), OPENCODE_COPY] + [os.path.join(p, "scene.mp4") for p in PARTS]
+    required = [A("harness.py"), A("trace.jsonl")] + [os.path.join(p, "scene.mp4") for p in PARTS]
     missing = [f for f in required if not manifest["files"].get(f)]
     passed = sum(1 for _, ok, _ in results if ok)
     print(f"\n{passed} of {len(results)} promises hold.")
