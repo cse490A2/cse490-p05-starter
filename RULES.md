@@ -16,7 +16,7 @@ The Python SDK is the `mcp` package (version 2, already installed). The pieces t
 list, `call_tool` to run one. Each listed tool has a `name`, a `description` and an
 `input_schema` (this SDK names its fields in snake_case: `input_schema`, `is_error`, and an image
 part's `mime_type` and `data`); turn each into a tool definition in the shape the model API already takes and add
-it beside read_file, write_file and execute. A call's result goes back to the model as a tool
+it beside read_file, write_file and execute_file. A call's result goes back to the model as a tool
 result, the same way the harness's own tools do. A result may carry an image part, not text:
 `get_viewport_screenshot` answers with a PNG of the Blender window. Pass that part to the model
 as an image in the shape the model API takes, so the model sees what it built. Keep the whole run
@@ -30,10 +30,11 @@ Blender takes one connection at a time: stop the harness before you start OpenCo
 The same server, the same addon, on your own machine:
 
 1. Install Blender from blender.org (the codespace runs 5.2; any current release works).
-2. Install the addon: download `addon.py` from the `blender-mcp` 1.9.1 release at
-   github.com/ahujasid/blender-mcp, then in Blender: Edit, Preferences, Add-ons, Install, pick
-   the file, tick it on.
-3. Start the socket: press N in the 3D view, open the BlenderMCP tab, click Connect to MCP server.
+2. Install the addon: download `addon.py` from github.com/ahujasid/blender-mcp (the file at
+   the top of the repository's main page; there is no Releases page, 1.9.1 is the server's
+   version), then in Blender: Edit, Preferences, Add-ons, the arrow at the top right, Install
+   from Disk, pick the file, tick it on.
+3. Start the socket: press N in the 3D view, open the MCP for Blender tab, click Connect to MCP server.
    Port 9876.
 4. Install uv (astral.sh/uv), then the command above starts the server; put it in your
    harness's MCP config and in OpenCode's config the way the codespace's setup.sh does.

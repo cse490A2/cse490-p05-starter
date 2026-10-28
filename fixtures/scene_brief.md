@@ -1,6 +1,6 @@
 # Scene brief
 
-Fill this in before you send /plan. Your agent reads it in plan mode.
+Fill this in before you ask your agent for the scene. Your agent reads it first and plans from it.
 
 Subject: (one sentence, anything built from primitives, except a pelican riding a bicycle)
 

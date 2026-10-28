@@ -17,7 +17,7 @@
   },
   "secrets": {
     "LITELLM_API_KEY": {
-      "description": "Your course key from the course staff. It starts with sk-. Your harness and the chat both use it."
+      "description": "Your course key from the course staff. It starts with sk-. The ready check and OpenCode's gateway fallback use it; the chat reads it from your VS Code settings."
     },
     "PURPLE_API_KEY": {
       "description": "Your UW Purple API key. Your harness in Part 1 and OpenCode in Part 2 both use it."

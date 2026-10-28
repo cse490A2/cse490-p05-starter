@@ -11,7 +11,7 @@ laptop, RULES.md says what to install.
 | ASSIGNMENT.md | the handout, the same text as Canvas; the editor opens it on every start |
 | RULES.md | the Blender server: how to start it, in the codespace or on your laptop, and its tools |
 | skills/blender-scene/SKILL.md | the skill your agent follows to plan, build, animate and render a scene |
-| fixtures/scene_brief.md | a page for the scene you invent; fill it in before you /plan |
+| fixtures/scene_brief.md | a page for the scene you invent; fill it in before you ask your agent for the scene |
 | .vscode/mcp.json | the same server for VS Code's own MCP support |
 | checker.py | your copy of the grader's checks; writes the submission bundle to submission/ |
 | smoke.sh | tells you whether the codespace is ready |
@@ -25,14 +25,14 @@ LiteLLM chat) and your Purple key, endpoint and model in the environment (PURPLE
 PURPLE_BASE_URL, PURPLE_MODEL): point the harness at them as the setup instructions show. The
 harness model is DeepSeek V4.1 Flash on the UW Purple API.
 
-## Part 1, and the optional Part 2
+## Part 1, and Part 2
 
 Part 1 is your harness's work: it gains the Blender tools, passes the server's pictures back to
-the model as images, builds your animation and renders it into part1/. Part 2 is optional, OpenCode's or your
+the model as images, builds your animation and renders it into part1/. Part 2 is required, OpenCode's or your
 own CLI's: `opencode` in the terminal starts the OpenCode CLI, which setup pointed at DeepSeek
 V4.1 Flash on the UW Purple API and at the same Blender server your harness uses. Stop your
 harness (Ctrl+C) before you start OpenCode: Blender takes one connection at a time. OpenCode
-renders into part2/. Part 2 is not graded; its animation rides along in the bundle if you made it.
+renders into part2/. The grader's checks are on Part 1; the Part 2 animation goes in the bundle.
 
 checker.py bundles trace.jsonl and part1/scene.mp4, plus part2/scene.mp4 and OpenCode's session
 record when they exist, and tells you which of the handout's promises hold.
