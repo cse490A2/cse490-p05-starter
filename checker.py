@@ -233,25 +233,24 @@ def main():
     for part in PARTS + tuple(EXTRA):
         assemble_video(part)
 
-    # C01, C02
+    # C01: the listing line, and a building call that came back
     listed = [l for l in trace if sum(t in l for t in BLENDER_TOOLS) >= 3 and "get_scene_info" in l and "execute_blender_code" in l]
-    check("Your harness listed the Blender server's tools in trace.jsonl", listed,
-          f"{len(listed)} listing line(s)" if trace else "no trace.jsonl beside harness.py")
     calls = [i for i, l in enumerate(trace) if mentions(l, BUILD_TOOLS)]
     returned = [i for i in calls if any(mentions(trace[j], ("result", "reply", "content", "output")) for j in range(i, min(i + 2, len(trace))))]
-    check("A Blender call went through your harness and came back", returned, f"{len(returned)} call line(s) with a result")
-    # C03
+    check("Your harness connected to the Blender server and drove it", listed and returned,
+          (f"{len(listed)} listing line(s), {len(returned)} call line(s) with a result") if trace else "no trace.jsonl beside harness.py")
+    # C02
     seen = [l for l in trace if mentions(l, ("image_url", "data:image", "image/png", '"image"', "'image'"))
             and mentions(l, ("base64", "image_url", "data:image", "image/png"))]
     check("Your harness passed a picture of the Blender window to the model", seen, f"{len(seen)} line(s) carrying an image part")
-    # C04
+    # C03: the torus, and motion in part1/frames
     torus = [l for l in trace if "torus" in l.lower() and mentions(l, ("execute_blender_code", "primitive_torus_add", "get_scene_info"))]
-    check("A torus was built through your harness", torus, f"{len(torus)} line(s)")
-    # C05
-    ok, det = motion("part1"); check("Part 1's animation moves", ok, det)
-    # C06
-    secs, det = duration("part1"); check("Part 1's rendered animation exists and runs at least two seconds", secs is not None and secs >= 2.0, det)
-    # C07
+    moving, det_m = motion("part1")
+    check("A torus was built through your harness, and Part 1's animation moves", torus and moving, f"{len(torus)} torus line(s); {det_m}")
+    # C04: the Workbench ask, the render's length, no secret in the bundle
+    workbench = [l for l in trace if ("workbench" in l.lower() and mentions(l, ("part1/frames", "scene.mp4")))
+                 or ("BLENDER_WORKBENCH" in l and "part1/" in l)]
+    secs, det_d = duration("part1")
     extras = [os.path.join(p, "scene.mp4") for p in EXTRA if os.path.exists(os.path.join(p, "scene.mp4"))]
     files = [A("harness.py"), A("systemprompt.md"), A("transcript.md"), A("trace.jsonl"), OPENCODE_COPY,
              "fixtures/scene_brief.md"] + glob.glob(A("skills/*/SKILL.md")) \
@@ -259,18 +258,15 @@ def main():
         + [os.path.join(p, "still.png") for p in PARTS if os.path.exists(os.path.join(p, "still.png"))]
     leak = [f for f in files if os.path.isfile(f) and not f.endswith((".blend", ".mp4", ".png"))
             and SECRET.search(open(f, encoding="utf-8", errors="ignore").read())]
-    check("No key or password in anything you submit", not leak, ", ".join(leak))
-    # C08
-    workbench = [l for l in trace if ("workbench" in l.lower() and mentions(l, ("part1/frames", "scene.mp4")))
-                 or ("BLENDER_WORKBENCH" in l and "part1/" in l)]
-    check("The Part 1 render was asked of your harness with the Workbench engine", workbench, f"{len(workbench)} line(s)")
-    # C09, C10: not the checker's to decide
-    print("C09 is judged by the grader: the scene is the one your prompts asked for, and it is not a pelican on a bicycle")
-    print("C10 attendance is read by the grader from the wizard's attendance card")
-    # Part 2, optional and not graded: say what rides along
+    check("Part 1 was rendered with the Workbench engine into part1/scene.mp4, at least two seconds long, with no key in the bundle",
+          workbench and secs is not None and secs >= 2.0 and not leak,
+          f"{len(workbench)} Workbench line(s); {det_d}" + (f"; key found in {', '.join(leak)}" if leak else "; no key in the bundle"))
+    # C05: not the checker's to decide
+    print("C05 attendance is read by the grader from the staff Attendance spreadsheet (the code you typed in the wizard on the class day)")
+    # Part 2, required and not graded: say what rides along
     for p in EXTRA:
         secs2, det2 = duration(p)
-        print(f"NOTE    {p}/scene.mp4 present, optional and not graded: {det2}" + (f"; OpenCode's session: {model_note}" if sess and p == "part2" else ""))
+        print(f"NOTE    {p}/scene.mp4 present, required and not graded: {det2}" + (f"; OpenCode's session: {model_note}" if sess and p == "part2" else ""))
 
     # --- bundle
     os.makedirs(BUNDLE_DIR, exist_ok=True)
