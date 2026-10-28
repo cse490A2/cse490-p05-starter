@@ -18,7 +18,7 @@ the bundle, and when OpenCode built it, OpenCode's own record comes too: its ses
 live in ~/.local/share/opencode/opencode.db, and the newest one that mentions Blender is
 exported with `opencode export <id>` into opencode_session.json beside this file.
 """
-import datetime
+import hashlib, datetime
 import glob
 import json
 import os
@@ -32,8 +32,8 @@ import zipfile
 ROOT = os.path.abspath(os.path.dirname(__file__))
 os.chdir(ROOT)
 
-PARTS = ("part1",)                              # graded
-EXTRA = sorted(set(os.path.dirname(p) for p in glob.glob("part*/scene.mp4")) - set(PARTS))   # part2 and any more: optional, bundled when present
+PARTS = ("part1", "part2")                      # graded (Part 2 since 2026-10-28)
+EXTRA = sorted(set(os.path.dirname(p) for p in glob.glob("part*/scene.mp4")) - set(PARTS))   # part3 and any more: bundled when present, not graded
 BUNDLE_DIR = "submission"
 BUNDLE = os.path.join(BUNDLE_DIR, "p05-bundle.zip")
 OPENCODE_DB = os.path.expanduser("~/.local/share/opencode/opencode.db")
@@ -233,21 +233,19 @@ def main():
     for part in PARTS + tuple(EXTRA):
         assemble_video(part)
 
-    # C01: the listing line, and a building call that came back
+    # C01: the listing line, a building call that came back, and a picture to the model
     listed = [l for l in trace if sum(t in l for t in BLENDER_TOOLS) >= 3 and "get_scene_info" in l and "execute_blender_code" in l]
     calls = [i for i, l in enumerate(trace) if mentions(l, BUILD_TOOLS)]
     returned = [i for i in calls if any(mentions(trace[j], ("result", "reply", "content", "output")) for j in range(i, min(i + 2, len(trace))))]
-    check("Your harness connected to the Blender server and drove it", listed and returned,
-          (f"{len(listed)} listing line(s), {len(returned)} call line(s) with a result") if trace else "no trace.jsonl beside harness.py")
-    # C02
     seen = [l for l in trace if mentions(l, ("image_url", "data:image", "image/png", '"image"', "'image'"))
             and mentions(l, ("base64", "image_url", "data:image", "image/png"))]
-    check("Your harness passed a picture of the Blender window to the model", seen, f"{len(seen)} line(s) carrying an image part")
-    # C03: the torus, and motion in part1/frames
+    check("Your harness connected to the Blender server, drove it, and showed the model a picture", listed and returned and seen,
+          (f"{len(listed)} listing line(s), {len(returned)} call line(s) with a result, {len(seen)} line(s) carrying an image part") if trace else "no trace.jsonl beside harness.py")
+    # C02: the torus, and motion in part1/frames
     torus = [l for l in trace if "torus" in l.lower() and mentions(l, ("execute_blender_code", "primitive_torus_add", "get_scene_info"))]
     moving, det_m = motion("part1")
     check("A torus was built through your harness, and Part 1's animation moves", torus and moving, f"{len(torus)} torus line(s); {det_m}")
-    # C04: the Workbench ask, the render's length, no secret in the bundle
+    # C03: the Workbench ask, the render's length, no secret in the bundle
     workbench = [l for l in trace if ("workbench" in l.lower() and mentions(l, ("part1/frames", "scene.mp4")))
                  or ("BLENDER_WORKBENCH" in l and "part1/" in l)]
     secs, det_d = duration("part1")
@@ -261,12 +259,20 @@ def main():
     check("Part 1 was rendered with the Workbench engine into part1/scene.mp4, at least two seconds long, with no key in the bundle",
           workbench and secs is not None and secs >= 2.0 and not leak,
           f"{len(workbench)} Workbench line(s); {det_d}" + (f"; key found in {', '.join(leak)}" if leak else "; no key in the bundle"))
+    # C04: Part 2's render, moving, and not a copy of Part 1's
+    secs2, det_d2 = duration("part2")
+    moving2, det_m2 = motion("part2")
+    same = (os.path.exists("part1/scene.mp4") and os.path.exists("part2/scene.mp4")
+            and hashlib.sha256(open("part1/scene.mp4", "rb").read()).hexdigest() == hashlib.sha256(open("part2/scene.mp4", "rb").read()).hexdigest())
+    check("Your Part 2 agent built a second animation into part2/scene.mp4, at least two seconds long and not a copy of Part 1",
+          secs2 is not None and secs2 >= 2.0 and moving2 and not same,
+          f"{det_d2}; {det_m2}" + ("; identical to part1/scene.mp4" if same else ""))
     # C05: not the checker's to decide
     print("C05 attendance is read by the grader from the staff Attendance spreadsheet (the code you typed in the wizard on the class day)")
-    # Part 2, required and not graded: say what rides along
+    # animations beyond Part 2: not graded, say what rides along
     for p in EXTRA:
         secs2, det2 = duration(p)
-        print(f"NOTE    {p}/scene.mp4 present, required and not graded: {det2}" + (f"; OpenCode's session: {model_note}" if sess and p == "part2" else ""))
+        print(f"NOTE    {p}/scene.mp4 present, beyond Part 2 and not graded: {det2}" + (f"; OpenCode's session: {model_note}" if sess and p == "part2" else ""))
 
     # --- bundle
     os.makedirs(BUNDLE_DIR, exist_ok=True)

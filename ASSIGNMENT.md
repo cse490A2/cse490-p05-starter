@@ -47,4 +47,4 @@ By Tuesday 11:59 pm:
 
 ## Grading
 
-A model will autograde your submission. It checks that each step of Part 1 was properly followed. Every check is pass or fail. It does not judge whether your scene is beautiful, code style, prompt wording, or how many tries it took.
+A model will autograde your submission. It checks Part 1's steps, Part 2's animation, and your attendance. Every check is pass or fail. It does not judge whether your scene is beautiful, code style, prompt wording, or how many tries it took.
