@@ -43,7 +43,7 @@ grep -q '"purple"' "$HOME/.config/opencode/opencode.json" 2>/dev/null && grep -q
 [ -z "${PURPLE_API_KEY:-}" ] && [ -r "$HOME/.config/cse490/purple-key" ] && export PURPLE_API_KEY="$(cat "$HOME/.config/cse490/purple-key")"
 if [ -n "${PURPLE_API_KEY:-}" ]; then pass "Purple API key present"; else fail "PURPLE_API_KEY secret: your harness and OpenCode both need it (GitHub Settings, Codespaces, Secrets; then restart the codespace)"; fi
 pcode=$(curl -s -o /dev/null -w '%{http_code}' -X POST -H "api-key: ${PURPLE_API_KEY:-none}" -H "Content-Type: application/json" -d '{"model":"'"${PURPLE_MODEL:-DeepSeek-V4.1-Flash}"'","messages":[{"role":"user","content":"ok"}],"max_tokens":1}' "${PURPLE_BASE_URL:-https://apim-n1ai-usw2-065882797.azure-api.net/openai/v1}/chat/completions")
-[ "$pcode" = "200" ] && pass "Purple API answers to your key" || fail "Purple API (HTTP $pcode; 403 with a message about quota means today's allowance is spent, it resets at midnight UTC)"
+[ "$pcode" = "200" ] && pass "Purple API answers to your key" || fail "Purple API (HTTP $pcode: 401 means the key or the endpoint is wrong - a 32-character primary key from a Purple project on the DeepSeek Profile, pasted with no spaces, at the endpoint that project shows; 403 with a message about quota means today's allowance is spent, it resets at midnight UTC)"
 
 echo; echo "$ok ok, $bad missing"
 [ "$bad" -eq 0 ]
