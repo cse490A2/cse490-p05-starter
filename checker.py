@@ -172,26 +172,45 @@ def frames_of(part):
 
 
 def motion(part):
-    """The first and last frame differ in more than one percent of pixels. Pillow when it
-    is installed; otherwise a byte-level comparison of the decoded-size-agnostic PNG
-    bytes, which the detail line says."""
+    """Some frame differs from the first in more than one percent of pixels. The first
+    frame is compared with up to eight others spread across the sequence, the last among
+    them: a loop that ends where it started (a torus turned a full circle) differs in the
+    middle and not at the end, and before 2026-11-05 only the last frame was read, so a
+    correct loop failed (a student's report, Austin Elenzano). Pillow when it is
+    installed; otherwise a byte-level comparison of the PNG bytes, which the detail
+    line says."""
     fr = frames_of(part)
     if len(fr) < 2:
         return False, f"{len(fr)} frame(s) in {part}/frames"
+    step = max(1, (len(fr) - 1) // 8)
+    others = sorted(set(list(range(step, len(fr), step)) + [len(fr) - 1]))
     try:
         from PIL import Image, ImageChops
-        a, b = Image.open(fr[0]).convert("RGB"), Image.open(fr[-1]).convert("RGB")
-        if a.size != b.size:
-            return True, f"{len(fr)} frames, first and last differ in size"
-        diff = ImageChops.difference(a, b).convert("L").getdata()
-        changed = sum(1 for v in diff if v > 8)
-        share = changed / max(1, a.size[0] * a.size[1])
-        return share > 0.01, f"{len(fr)} frames, {share:.1%} of pixels differ"
+        a = Image.open(fr[0]).convert("RGB")
+        best, where = 0.0, 0
+        for i in others:
+            b = Image.open(fr[i]).convert("RGB")
+            if a.size != b.size:
+                return True, f"{len(fr)} frames, frame {i} differs from the first in size"
+            diff = ImageChops.difference(a, b).convert("L").getdata()
+            share = sum(1 for v in diff if v > 8) / max(1, a.size[0] * a.size[1])
+            if share > best:
+                best, where = share, i
+            if best > 0.01:
+                break
+        return best > 0.01, f"{len(fr)} frames, {best:.1%} of pixels differ between the first frame and frame {where}"
     except ImportError:
-        x, y = open(fr[0], "rb").read(), open(fr[-1], "rb").read()
-        n = max(len(x), len(y))
-        d = sum(1 for i in range(n) if (x[i:i+1] or b"\0") != (y[i:i+1] or b"\0"))
-        return d / max(1, n) > 0.01, f"{len(fr)} frames, {d / max(1, n):.1%} of bytes differ (Pillow absent, byte-level fallback)"
+        x = open(fr[0], "rb").read()
+        best, where = 0.0, 0
+        for i in others:
+            y = open(fr[i], "rb").read()
+            n = max(len(x), len(y))
+            d = sum(1 for k in range(n) if (x[k:k+1] or b"\0") != (y[k:k+1] or b"\0")) / max(1, n)
+            if d > best:
+                best, where = d, i
+            if best > 0.01:
+                break
+        return best > 0.01, f"{len(fr)} frames, {best:.1%} of bytes differ between the first frame and frame {where} (Pillow absent, byte-level fallback)"
 
 
 def duration(part):
